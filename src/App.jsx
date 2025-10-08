@@ -22,58 +22,30 @@ import NotFound from './pages/NotFound'
 
 function App() {
   return (
-    <AuthProvider>
-      <div className="App">
-        <Routes>
-          {/* Ruta de login */}
-          <Route path="/login" element={<Login />} />
-          
-          {/* Rutas protegidas */}
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }>
-            {/* Dashboard */}
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            
-            {/* Inventario */}
-            <Route path="inventory" element={<Inventory />} />
-            
-            {/* Incidencias */}
-            <Route path="incidents" element={<Incidents />} />
-            
-            {/* Mantenimientos */}
-            <Route path="maintenance" element={<Maintenance />} />
-            
-            {/* Formatos Responsivos */}
-            <Route path="responsive-forms" element={<ResponsiveForms />} />
-            
-            {/* Requisiciones */}
-            <Route path="requisitions" element={<Requisitions />} />
-            
-            {/* Reportes */}
-            <Route path="reports" element={<Reports />} />
-            
-            {/* Usuarios (Solo Admin) */}
-            <Route path="users" element={
-              <ProtectedRoute requireAdmin>
-                <Users />
-              </ProtectedRoute>
-            } />
-            
-            {/* Perfil */}
-            <Route path="profile" element={<Profile />} />
-          </Route>
-          
-          {/* Página 404 */}
-          <Route path="/404" element={<NotFound />} />
-          <Route path="*" element={<Navigate to="/404" replace />} />
-        </Routes>
-      </div>
-    </AuthProvider>
-  )
+    <Router>
+      <Routes>
+        {/* Ruta pública */}
+        <Route path="/login" element={<Login />} />
+
+        {/* Rutas protegidas con Layout */}
+        <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/inventory" element={<Inventory />} />
+          <Route path="/incidents" element={<Incidents />} />
+          <Route path="/maintenance" element={<Maintenance />} />
+          <Route path="/responsive-forms" element={<ResponsiveForms />} />
+          <Route path="/requisitions" element={<Requisitions />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/profile" element={<Profile />} />
+        </Route>
+
+        {/* Redirecciones */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;
