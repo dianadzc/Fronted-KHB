@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users as UsersIcon, UserPlus, Edit, Shield } from 'lucide-react';
+import { Users as UsersIcon, UserPlus, Edit, Shield, CheckCircle, XCircle } from 'lucide-react';
 import api from '../services/api';
 
 export default function Users() {
@@ -12,7 +12,7 @@ export default function Users() {
     email: '',
     full_name: '',
     password: '',
-    rol: 'user',
+    role: 'user',
     department: ''
   });
 
@@ -37,16 +37,25 @@ export default function Users() {
     e.preventDefault();
     try {
       if (editingUser) {
-        await api.updateUser(editingUser.id, formData);
+        await api.updateUser(editingUser.id, {
+          email: formData.email,
+          full_name: formData.full_name,
+          role: formData.role,
+          department: formData.department,
+          active: true,
+          ...(formData.password && { password: formData.password })
+        });
+        alert('Usuario actualizado exitosamente');
       } else {
-        await api.register(formData);
+        await api.createUser(formData);
+        alert('Usuario creado exitosamente');
       }
       setShowModal(false);
       resetForm();
       loadUsers();
     } catch (error) {
       console.error('Error al guardar usuario:', error);
-      alert('Error al guardar el usuario');
+      alert(error.message || 'Error al guardar el usuario');
     }
   };
 
@@ -57,8 +66,8 @@ export default function Users() {
       email: user.email,
       full_name: user.full_name,
       password: '',
-      rol: user.rol,
-      department: user.department
+      role: user.role,
+      department: user.department || ''
     });
     setShowModal(true);
   };
@@ -69,7 +78,7 @@ export default function Users() {
       email: '',
       full_name: '',
       password: '',
-      rol: 'user',
+      role: 'user',
       department: ''
     });
     setEditingUser(null);
@@ -106,7 +115,7 @@ export default function Users() {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-lg"
         >
           <UserPlus className="w-5 h-5" />
           Nuevo Usuario
@@ -129,7 +138,7 @@ export default function Users() {
             <div>
               <p className="text-gray-600 text-sm">Administradores</p>
               <p className="text-3xl font-bold text-purple-600">
-                {users.filter(u => u.rol === 'admin').length}
+                {users.filter(u => u.role === 'admin').length}
               </p>
             </div>
             <Shield className="w-10 h-10 text-purple-600" />
@@ -143,7 +152,7 @@ export default function Users() {
                 {users.filter(u => u.active).length}
               </p>
             </div>
-            <UsersIcon className="w-10 h-10 text-green-600" />
+            <CheckCircle className="w-10 h-10 text-green-600" />
           </div>
         </div>
       </div>
@@ -159,6 +168,7 @@ export default function Users() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Departamento</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
             </tr>
           </thead>
@@ -172,11 +182,18 @@ export default function Users() {
                 <td className="px-6 py-4 text-sm text-gray-900">{user.full_name}</td>
                 <td className="px-6 py-4 text-sm text-gray-900">{user.email}</td>
                 <td className="px-6 py-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${roleColors[user.rol]}`}>
-                    {roleLabels[user.rol]}
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
+                    {roleLabels[user.role]}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-900">{user.department}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">{user.department || '-'}</td>
+                <td className="px-6 py-4">
+                  {user.active ? (
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-600" />
+                  )}
+                </td>
                 <td className="px-6 py-4 text-sm">
                   <button
                     onClick={() => handleEdit(user)}
@@ -199,25 +216,27 @@ export default function Users() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-6">
               {editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
             </h2>
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nombre de Usuario *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.username}
-                    onChange={(e) => setFormData({...formData, username: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={editingUser}
-                  />
-                </div>
+                {!editingUser && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nombre de Usuario *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.username}
+                      onChange={(e) => setFormData({...formData, username: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="usuario123"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nombre Completo *
@@ -228,6 +247,7 @@ export default function Users() {
                     value={formData.full_name}
                     onChange={(e) => setFormData({...formData, full_name: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Juan Pérez"
                   />
                 </div>
                 <div>
@@ -240,6 +260,7 @@ export default function Users() {
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="usuario@beachscape.com"
                   />
                 </div>
                 <div>
@@ -252,7 +273,10 @@ export default function Users() {
                     value={formData.password}
                     onChange={(e) => setFormData({...formData, password: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="••••••••"
+                    minLength={6}
                   />
+                  <p className="text-xs text-gray-500 mt-1">Mínimo 6 caracteres</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -260,25 +284,27 @@ export default function Users() {
                   </label>
                   <select
                     required
-                    value={formData.rol}
-                    onChange={(e) => setFormData({...formData, rol: e.target.value})}
+                    value={formData.role}
+                    onChange={(e) => setFormData({...formData, role: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="user">Usuario</option>
                     <option value="admin">Administrador</option>
                   </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Usuario: Puede ver y descargar formatos. Admin: Control total del sistema
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Departamento *
+                    Departamento
                   </label>
                   <input
                     type="text"
-                    required
                     value={formData.department}
                     onChange={(e) => setFormData({...formData, department: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="ej. Sistemas, Recepción"
+                    placeholder="Sistemas, Recepción, etc."
                   />
                 </div>
               </div>

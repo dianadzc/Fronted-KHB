@@ -19,11 +19,18 @@ export default function Login() {
 
     try {
       const response = await api.login(formData.username, formData.password);
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      
+      // Guardar token y usuario
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+      }
+      
+      // Navegar al dashboard
       navigate('/dashboard');
     } catch (error) {
       setError(error.message || 'Usuario o contraseña incorrectos');
+      console.error('Error en login:', error);
     } finally {
       setLoading(false);
     }

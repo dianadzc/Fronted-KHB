@@ -1,287 +1,327 @@
-// src/services/api.js
-import axios from 'axios';
+// services/api.js - VERSIÓN ACTUALIZADA Y CORREGIDA
+const API_URL = 'http://localhost:5000/api';
 
-// Configura la base de la API
-const API_URL = 'https://tu-servidor-backend.com/api';
+// Configuración base para fetch
+async function request(endpoint, options = {}) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const config = {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers,
+    },
+  };
 
-// ✅ 1. Instancia principal de Axios
-export const api = axios.create({
-  baseURL: API_URL,
-  headers: { 'Content-Type': 'application/json' },
-});
-
-// ✅ 2. Función para setear el token global
-export const setAuthToken = (token) => {
-  if (token) {
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    localStorage.setItem('token', token);
-  } else {
-    delete api.defaults.headers.common['Authorization'];
-    localStorage.removeItem('token');
-  }
-};
-
-// ✅ 3. API de autenticación (esto es lo que importa)
-export const authAPI = {
-  login: async (credentials) => {
-    const res = await api.post('/login', credentials);
-    return res.data;
-  },
-
-  register: async (data) => {
-    const res = await api.post('/register', data);
-    return res.data;
-  },
-
-  getProfile: async () => {
-    const res = await api.get('/profile');
-    return res.data;
-  },
-
-  changePassword: async (data) => {
-    const res = await api.post('/change-password', data);
-    return res.data;
-  },
-};
-
-// ✅ 4. Función para cerrar sesión
-export const logout = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  delete api.defaults.headers.common['Authorization'];
-};
-
-
-// services/api.js
-/*const API_URL = 'http://localhost:5000';
-
-class ApiService {
-  // Configuración base para fetch
-  async request(endpoint, options = {}) {
-    const token = localStorage.getItem('token');
-    const config = {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-        ...options.headers,
-      },
-    };
-
-    try {
-      const response = await fetch(`${API_URL}${endpoint}`, config);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Error en la petición');
-      }
-      
-      return data;
-    } catch (error) {
-      console.error('Error en API:', error);
-      throw error;
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, config);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || data.error || 'Error en la petición');
     }
-  }
-
-  // ========== AUTENTICACIÓN ==========
-  async login(username, password) {
-    return this.request('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password }),
-    });
-  }
-
-  async register(userData) {
-    return this.request('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-  }
-
-  // ========== INVENTARIO ==========
-  async getInventory() {
-    return this.request('/inventory');
-  }
-
-  async getInventoryById(id) {
-    return this.request(`/inventory/${id}`);
-  }
-
-  async createInventoryItem(item) {
-    return this.request('/inventory', {
-      method: 'POST',
-      body: JSON.stringify(item),
-    });
-  }
-
-  async updateInventoryItem(id, item) {
-    return this.request(`/inventory/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(item),
-    });
-  }
-
-  async deleteInventoryItem(id) {
-    return this.request(`/inventory/${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // ========== INCIDENCIAS ==========
-  async getIncidents() {
-    return this.request('/incidents');
-  }
-
-  async getIncidentById(id) {
-    return this.request(`/incidents/${id}`);
-  }
-
-  async createIncident(incident) {
-    return this.request('/incidents', {
-      method: 'POST',
-      body: JSON.stringify(incident),
-    });
-  }
-
-  async updateIncidentStatus(id, status) {
-    return this.request(`/incidents/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ estado: status }),
-    });
-  }
-
-  // ========== MANTENIMIENTO ==========
-  async getMaintenance() {
-    return this.request('/maintenance');
-  }
-
-  async createMaintenance(maintenance) {
-    return this.request('/maintenance', {
-      method: 'POST',
-      body: JSON.stringify(maintenance),
-    });
-  }
-
-  async completeMaintenance(id) {
-    return this.request(`/maintenance/${id}/complete`, {
-      method: 'PATCH',
-    });
-  }
-
-  // ========== FORMATOS RESPONSIVOS ==========
-  async getResponsiveForms() {
-    return this.request('/responsive-forms');
-  }
-
-  async createResponsiveForm(form) {
-    return this.request('/responsive-forms', {
-      method: 'POST',
-      body: JSON.stringify(form),
-    });
-  }
-
-  async returnAsset(id) {
-    return this.request(`/responsive-forms/${id}/return`, {
-      method: 'PATCH',
-    });
-  }
-
-  async downloadResponsiveFormPDF(id) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/responsive-forms/${id}/pdf`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
     
-    if (!response.ok) throw new Error('Error al descargar PDF');
-    
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `formato-responsivo-${id}.pdf`;
-    a.click();
-  }
-
-  // ========== REQUISICIONES ==========
-  async getRequisitions() {
-    return this.request('/requisitions');
-  }
-
-  async createRequisition(requisition) {
-    return this.request('/requisitions', {
-      method: 'POST',
-      body: JSON.stringify(requisition),
-    });
-  }
-
-  async updateRequisitionStatus(id, status) {
-    return this.request(`/requisitions/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ estado: status }),
-    });
-  }
-
-  async downloadRequisitionPDF(id) {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/requisitions/${id}/pdf`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-    
-    if (!response.ok) throw new Error('Error al descargar PDF');
-    
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `requisicion-${id}.pdf`;
-    a.click();
-  }
-
-  // ========== REPORTES ==========
-  async getReports() {
-    return this.request('/reports');
-  }
-
-  async downloadInventoryReport() {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/reports/inventory`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-    
-    if (!response.ok) throw new Error('Error al descargar reporte');
-    
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reporte-inventario.pdf`;
-    a.click();
-  }
-
-  // ========== USUARIOS ==========
-  async getUsers() {
-    return this.request('/auth/users');
-  }
-
-  async updateUser(id, userData) {
-    return this.request(`/auth/users/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(userData),
-    });
+    return data;
+  } catch (error) {
+    console.error('Error en API:', error);
+    throw error;
   }
 }
 
-export const logout = async () => {
-  // ejemplo de lógica para cerrar sesión
-  localStorage.removeItem('token');
-  return true;
+// ========== AUTENTICACIÓN ==========
+export const login = async (username, password) => {
+  return request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
 };
 
+export const register = async (userData) => {
+  return request('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(userData),
+  });
+};
 
-export default new ApiService();*/
+export const getProfile = async () => {
+  return request('/auth/profile');
+};
+
+/*export const getUsers = async () => {
+  const response = await request('/auth/users');
+  return response.users || [];
+};
+
+export const createUser = async (userData) => {
+  return request('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(userData),
+  });
+};
+
+export const updateUser = async (id, userData) => {
+  return request(`/auth/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(userData),
+  });
+};*/
+
+// ========== INVENTARIO (ASSETS) ==========
+export const getInventory = async (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  const response = await request(`/inventory${query ? `?${query}` : ''}`);
+  return response.assets || [];
+};
+
+export const getInventoryById = async (id) => {
+  const response = await request(`/inventory/${id}`);
+  return response.asset;
+};
+
+export const createInventoryItem = async (item) => {
+  // Convertir del formato del frontend al backend
+  const backendItem = {
+    name: item.nombre,
+    description: item.descripcion,
+    category_id: getCategoryIdByType(item.tipo),
+    asset_code: `ASSET-${Date.now()}`, // Generar código único
+    status: item.estado.toLowerCase().replace(' ', '_'),
+    purchase_price: parseFloat(item.valorEstimado),
+    brand: item.marca || '',
+    model: item.modelo || ''
+  };
+  
+  return request('/inventory', {
+    method: 'POST',
+    body: JSON.stringify(backendItem),
+  });
+};
+
+export const updateInventoryItem = async (id, item) => {
+  const backendItem = {
+    name: item.nombre,
+    description: item.descripcion,
+    category_id: getCategoryIdByType(item.tipo),
+    status: item.estado.toLowerCase().replace(' ', '_'),
+    purchase_price: parseFloat(item.valorEstimado),
+  };
+  
+  return request(`/inventory/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(backendItem),
+  });
+};
+
+export const deleteInventoryItem = async (id) => {
+  return request(`/inventory/${id}`, {
+    method: 'DELETE',
+  });
+};
+
+// Función auxiliar para mapear tipos a category_id
+function getCategoryIdByType(tipo) {
+  const mapping = {
+    'Computadora': 1,
+    'Impresora': 2,
+    'Cámara': 3,
+    'Red': 4,
+    'Software': 5,
+    'Otro': 8
+  };
+  return mapping[tipo] || 8;
+}
+
+// ========== INCIDENCIAS ==========
+export const getIncidents = async (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  const response = await request(`/incidents${query ? `?${query}` : ''}`);
+  return response.incidents || [];
+};
+
+export const getIncidentById = async (id) => {
+  const response = await request(`/incidents/${id}`);
+  return response.incident;
+};
+
+export const createIncident = async (incident) => {
+  const backendIncident = {
+    title: incident.titulo || incident.title,
+    description: incident.descripcion || incident.description,
+    priority: incident.prioridad?.toLowerCase() || 'medium',
+    asset_id: incident.idActivo || incident.asset_id
+  };
+  
+  return request('/incidents', {
+    method: 'POST',
+    body: JSON.stringify(backendIncident),
+  });
+};
+
+export const updateIncidentStatus = async (id, status) => {
+  return request(`/incidents/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ status }),
+  });
+};
+
+// ========== MANTENIMIENTO ==========
+export const getMaintenance = async (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  const response = await request(`/maintenance${query ? `?${query}` : ''}`);
+  return response.maintenances || [];
+};
+
+export const createMaintenance = async (maintenance) => {
+  const backendMaintenance = {
+    asset_id: maintenance.idActivo || maintenance.asset_id,
+    type: maintenance.tipo?.toLowerCase() || 'preventive',
+    title: maintenance.titulo || `Mantenimiento ${maintenance.tipo}`,
+    description: maintenance.notas || maintenance.description,
+    scheduled_date: maintenance.fechaInicio || maintenance.scheduled_date,
+    cost: parseFloat(maintenance.costosEstimados || maintenance.cost || 0)
+  };
+  
+  return request('/maintenance', {
+    method: 'POST',
+    body: JSON.stringify(backendMaintenance),
+  });
+};
+
+export const completeMaintenance = async (id) => {
+  return request(`/maintenance/${id}/complete`, {
+    method: 'PUT',
+    body: JSON.stringify({ notes: 'Completado desde el sistema' }),
+  });
+};
+
+// ========== FORMATOS RESPONSIVOS ==========
+export const getResponsiveForms = async (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  const response = await request(`/responsive-forms${query ? `?${query}` : ''}`);
+  return response.forms || [];
+};
+
+export const createResponsiveForm = async (form) => {
+  const backendForm = {
+    asset_id: form.idActivo || form.asset_id,
+    new_responsible_id: 1, // Usuario por defecto, ajustar según necesidad
+    transfer_date: new Date().toISOString().split('T')[0],
+    reason: `Asignación de ${form.tipoequipo}`,
+    conditions: `Marca: ${form.marca}, Serie: ${form.serie}`
+  };
+  
+  return request('/responsive-forms', {
+    method: 'POST',
+    body: JSON.stringify(backendForm),
+  });
+};
+
+export const returnAsset = async (id) => {
+  return request(`/responsive-forms/${id}/return`, {
+    method: 'PUT',
+  });
+};
+
+export const downloadResponsiveFormPDF = async (id) => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_URL}/responsive-forms/${id}/pdf`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  
+  if (!response.ok) throw new Error('Error al descargar PDF');
+  
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `formato-responsivo-${id}.pdf`;
+  a.click();
+};
+
+// ========== REQUISICIONES ==========
+export const getRequisitions = async () => {
+  // Por ahora devolver array vacío ya que no está implementado en el backend
+  return [];
+};
+
+export const createRequisition = async (requisition) => {
+  // Implementar cuando el backend esté listo
+  console.log('Crear requisición:', requisition);
+  return { message: 'Funcionalidad en desarrollo' };
+};
+
+export const updateRequisitionStatus = async (id, status) => {
+  console.log('Actualizar requisición:', id, status);
+  return { message: 'Funcionalidad en desarrollo' };
+};
+
+export const downloadRequisitionPDF = async (id) => {
+  console.log('Descargar PDF requisición:', id);
+};
+
+// ========== REPORTES ==========
+export const getReports = async () => {
+  const response = await request('/reports/dashboard');
+  return response.dashboard || {};
+};
+
+export const downloadInventoryReport = async () => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_URL}/reports/inventory`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  
+  if (!response.ok) throw new Error('Error al descargar reporte');
+  
+  const data = await response.json();
+  console.log('Reporte de inventario:', data);
+  // Aquí puedes agregar lógica para descargar como PDF
+};
+
+// ========== USUARIOS ==========
+export const getUsers = async () => {
+  // Por ahora devolver array vacío ya que no hay endpoint en el backend
+  return [];
+};
+
+export const updateUser = async (id, userData) => {
+  console.log('Actualizar usuario:', id, userData);
+  return { message: 'Funcionalidad en desarrollo' };
+};
+
+// Export default con todas las funciones
+const api = {
+  login,
+  register,
+  getProfile,
+  getInventory,
+  getInventoryById,
+  createInventoryItem,
+  updateInventoryItem,
+  deleteInventoryItem,
+  getIncidents,
+  getIncidentById,
+  createIncident,
+  updateIncidentStatus,
+  getMaintenance,
+  createMaintenance,
+  completeMaintenance,
+  getResponsiveForms,
+  createResponsiveForm,
+  returnAsset,
+  downloadResponsiveFormPDF,
+  getRequisitions,
+  createRequisition,
+  updateRequisitionStatus,
+  downloadRequisitionPDF,
+  getReports,
+  downloadInventoryReport,
+  getUsers,
+  updateUser
+};
+
+export default api;

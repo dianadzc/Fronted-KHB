@@ -24,13 +24,37 @@ export default function Inventory() {
     try {
       setLoading(true);
       const data = await api.getInventory();
-      setItems(data);
+      
+      // Convertir datos del backend al formato del frontend
+      const formattedData = data.map(item => ({
+        idActivo: item.id,
+        nombre: item.name,
+        descripcion: item.description,
+        tipo: item.category_name || 'Otro',
+        estado: formatStatus(item.status),
+        valorEstimado: item.purchase_price || 0,
+        marca: item.brand,
+        modelo: item.model
+      }));
+      
+      setItems(formattedData);
     } catch (error) {
       console.error('Error al cargar inventario:', error);
       alert('Error al cargar el inventario');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Función para formatear el estado del backend al frontend
+  const formatStatus = (status) => {
+    const statusMap = {
+      'active': 'Disponible',
+      'in_use': 'En uso',
+      'maintenance': 'En mantenimiento',
+      'inactive': 'Dado de baja'
+    };
+    return statusMap[status] || 'Disponible';
   };
 
   const handleSubmit = async (e) => {
@@ -44,6 +68,7 @@ export default function Inventory() {
       setShowModal(false);
       resetForm();
       loadInventory();
+      alert(editingItem ? 'Activo actualizado exitosamente' : 'Activo creado exitosamente');
     } catch (error) {
       console.error('Error al guardar:', error);
       alert('Error al guardar el activo');
@@ -55,6 +80,7 @@ export default function Inventory() {
     try {
       await api.deleteInventoryItem(id);
       loadInventory();
+      alert('Activo eliminado exitosamente');
     } catch (error) {
       console.error('Error al eliminar:', error);
       alert('Error al eliminar el activo');
@@ -180,7 +206,7 @@ export default function Inventory() {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900">
-                  ${parseFloat(item.valorEstimado).toLocaleString('es-MX')}
+                  ${parseFloat(item.valorEstimado || 0).toLocaleString('es-MX')}
                 </td>
                 <td className="px-6 py-4 text-sm">
                   <div className="flex gap-2">
