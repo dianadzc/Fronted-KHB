@@ -1,4 +1,4 @@
-// services/api.js - VERSIÓN ACTUALIZADA Y CORREGIDA
+// services/api.js
 const API_URL = 'http://localhost:5000/api';
 
 // Configuración base para fetch
@@ -44,10 +44,314 @@ export const register = async (userData) => {
 };
 
 export const getProfile = async () => {
-  return request('/auth/profile');
+  const response = await request('/auth/profile');
+  return response.user;
 };
 
-/*export const getUsers = async () => {
+// ========== INVENTARIO ==========
+// Obtener lista de inventario con mapeo adecuado
+export const getInventory = async (params = {}) => {
+  try {
+    const query = new URLSearchParams(params).toString();
+    const response = await request(`/inventory${query ? `?${query}` : ''}`);
+    
+    const assets = response.assets || [];
+    
+    const formattedAssets = assets.map(asset => ({
+      id: asset._id || asset.id,
+      idActivo: asset._id || asset.id,
+      name: asset.name,
+      nombre: asset.name,
+      description: asset.description,
+      descripcion: asset.description,
+      asset_code: asset.asset_code,
+      category_name: asset.category?.name || asset.category_name || 'Otro',
+      tipo: asset.category?.name || asset.category_name || 'Otro',
+      status: asset.status,
+      purchase_price: asset.purchase_price,
+      valorEstimado: asset.purchase_price,
+      brand: asset.brand,
+      marca: asset.brand,
+      model: asset.model,
+      modelo: asset.model
+    }));
+    
+    console.log('📦 Inventario mapeado:', formattedAssets);
+    
+    return formattedAssets;
+  } catch (error) {
+    console.error('❌ Error en getInventory:', error);
+    return [];
+  }
+};
+// Obtener un ítem de inventario por ID con mapeo adecuado
+export const getInventoryById = async (id) => {
+  const response = await request(`/inventory/${id}`);
+  const asset = response.asset;
+  
+  return {
+    id: asset._id || asset.id,
+    idActivo: asset._id || asset.id,
+    name: asset.name,
+    nombre: asset.name,
+    description: asset.description,
+    descripcion: asset.description,
+    asset_code: asset.asset_code,
+    category_name: asset.category?.name || asset.category_name || 'Otro',
+    tipo: asset.category?.name || asset.category_name || 'Otro',
+    status: asset.status,
+    purchase_price: asset.purchase_price,
+    valorEstimado: asset.purchase_price,
+    brand: asset.brand,
+    marca: asset.brand,
+    model: asset.model,
+    modelo: asset.model
+  };
+};
+// Función para crear un nuevo ítem de inventario con mapeo adecuado
+export const createInventoryItem = async (item) => {
+  // Mapear el estado correctamente
+  const statusMap = {
+    'Disponible': 'active',
+    'En uso': 'in_use',
+    'En mantenimiento': 'maintenance',
+    'Dado de baja': 'inactive'
+  };
+
+  const backendItem = {
+    name: item.nombre,
+    description: item.descripcion,
+    asset_code: `ASSET-${Date.now()}`,
+    serial_number: item.serie || '',
+    status: statusMap[item.estado] || 'active',
+    purchase_date: new Date().toISOString().split('T')[0],
+    purchase_price: parseFloat(item.valorEstimado) || 0,
+    brand: item.marca || '',
+    model: item.modelo || '',
+    location: 'Almacén',
+    notes: item.descripcion || ''
+  };
+  
+  console.log('📦 Creando activo - Datos enviados:', backendItem);
+  
+  try {
+    const result = await request('/inventory', {
+      method: 'POST',
+      body: JSON.stringify(backendItem),
+    });
+    console.log('✅ Activo creado exitosamente:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ Error al crear activo:', error);
+    throw error;
+  }
+};
+
+// Función para actualizar un ítem de inventario con mapeo adecuado
+export const updateInventoryItem = async (id, item) => {
+  const statusMap = {
+    'Disponible': 'active',
+    'En uso': 'in_use',
+    'En mantenimiento': 'maintenance',
+    'Dado de baja': 'inactive'
+  };
+
+  const backendItem = {
+    name: item.nombre,
+    description: item.descripcion,
+    status: statusMap[item.estado] || 'active',
+    purchase_price: parseFloat(item.valorEstimado) || 0,
+  };
+  
+  return request(`/inventory/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(backendItem),
+  });
+};
+
+// Función para eliminar un ítem de inventario
+export const deleteInventoryItem = async (id) => {
+  return request(`/inventory/${id}`, {
+    method: 'DELETE',
+  });
+};
+
+// ========== INCIDENCIAS ==========
+export const getIncidents = async (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  const response = await request(`/incidents${query ? `?${query}` : ''}`);
+  return response.incidents || [];
+};
+
+export const createIncident = async (incident) => {
+  return request('/incidents', {
+    method: 'POST',
+    body: JSON.stringify(incident),
+  });
+};
+
+
+// ========== MANTENIMIENTO ==========
+
+export const getMaintenance = async (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  const response = await request(`/maintenance${query ? `?${query}` : ''}`);
+  
+  // Mapear datos del backend al frontend
+  const maintenances = response.maintenances || [];
+  return maintenances.map(m => ({
+    idMantenimiento: m._id,
+    idActivo: m.asset_id?._id || m.asset_id,
+    nombreActivo: m.asset_id?.name,
+    tipo: formatMaintenanceType(m.type),
+    fechaInicio: m.scheduled_date,
+    fechaFin: m.completed_date,
+    notas: m.description || m.notes || '',
+    costosEstimados: m.cost || 0,
+    status: m.status,
+    titulo: m.title
+  }));
+};
+
+const formatMaintenanceType = (type) => {
+  const typeMap = {
+    'preventive': 'Preventivo',
+    'corrective': 'Correctivo',
+    'predictive': 'Predictivo'
+  };
+  return typeMap[type] || 'Preventivo';
+};
+
+export const createMaintenance = async (maintenance) => {
+  const typeMap = {
+    'Preventivo': 'preventive',
+    'Correctivo': 'corrective',
+    'Predictivo': 'predictive'
+  };
+
+  const backendMaintenance = {
+    asset_id: maintenance.idActivo, // ✅ ID del activo
+    type: typeMap[maintenance.tipo] || 'preventive', // ✅ Usar 'type' no 'maintenance_type'
+    title: maintenance.notas || 'Mantenimiento programado', // ✅ CAMPO REQUERIDO
+    description: maintenance.notas || '', // Descripción adicional
+    scheduled_date: maintenance.fechaInicio, // ✅ Fecha en formato ISO
+    cost: parseFloat(maintenance.costosEstimados) || 0, // ✅ Usar 'cost' no 'estimated_cost'
+    notes: maintenance.notas || '',
+    status: 'scheduled'
+  };
+  
+  console.log('🔧 Enviando al backend:', backendMaintenance);
+  
+  try {
+    const result = await request('/maintenance', {
+      method: 'POST',
+      body: JSON.stringify(backendMaintenance),
+    });
+    console.log('✅ Respuesta exitosa:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ Error al crear mantenimiento:', error);
+    throw error;
+  }
+};
+
+export const completeMaintenance = async (id) => {
+  return request(`/maintenance/${id}/complete`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      notes: 'Mantenimiento completado',
+      cost: 0
+    }),
+  });
+};
+
+// ========== FORMATOS RESPONSIVOS ==========
+export const getResponsiveForms = async (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  const response = await request(`/responsive-forms${query ? `?${query}` : ''}`);
+  return response.forms || [];
+};
+
+export const createResponsiveForm = async (form) => {
+  return request('/responsive-forms', {
+    method: 'POST',
+    body: JSON.stringify(form),
+  });
+};
+
+// ========== REQUISICIONES ==========
+// Obtener lista de requisiciones con mapeo adecuado
+export const getRequisitions = async (params = {}) => {
+  try {
+    const query = new URLSearchParams(params).toString();
+    const response = await request(`/requisitions${query ? `?${query}` : ''}`);
+    
+    const requisitions = response.requisitions || [];
+    
+    console.log('📋 Requisiciones recibidas:', requisitions);
+    
+    return requisitions;
+  } catch (error) {
+    console.error('❌ Error al obtener requisiciones:', error);
+    return [];
+  }
+};
+// Función para crear una nueva requisición con mapeo adecuado
+export const createRequisition = async (requisition) => {
+  const backendRequisition = {
+    request_type: requisition.request_type,
+    amount: parseFloat(requisition.amount),
+    currency: requisition.currency,
+    payable_to: requisition.payable_to,
+    concept: requisition.concept
+  };
+  
+  console.log('📝 Enviando requisición:', backendRequisition);
+  
+  try {
+    const result = await request('/requisitions', {
+      method: 'POST',
+      body: JSON.stringify(backendRequisition),
+    });
+    console.log('✅ Requisición creada:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ Error completo:', error);
+    throw error;
+  }
+};
+// Función para actualizar el estado de una requisición (aprobar/rechazar)
+export const updateRequisitionStatus = async (id, approved) => {
+  console.log(`${approved ? '✅' : '❌'} Actualizando estado:`, { id, approved });
+  
+  return request(`/requisitions/${id}/approve`, {
+    method: 'PUT',
+    body: JSON.stringify({ 
+      approved: approved,
+      notes: approved ? 'Aprobada desde el sistema' : 'Rechazada desde el sistema'
+    }),
+  });
+};
+// Función para "descargar" (mostrar) la requisición en formato PDF
+export const downloadRequisitionPDF = async (id) => {
+  try {
+    const response = await request(`/requisitions/${id}/pdf`);
+    console.log('📄 Datos para PDF:', response);
+    return response.requisition; // Devolver la requisición completa
+  } catch (error) {
+    console.error('❌ Error al obtener datos del PDF:', error);
+    throw error;
+  }
+};
+
+// ========== REPORTES ==========
+export const getReports = async () => {
+  const response = await request('/reports/dashboard');
+  return response.dashboard || {};
+};
+
+// ========== USUARIOS ========== ← AQUÍ ESTÁ LA CORRECCIÓN
+export const getUsers = async () => {
   const response = await request('/auth/users');
   return response.users || [];
 };
@@ -64,236 +368,9 @@ export const updateUser = async (id, userData) => {
     method: 'PUT',
     body: JSON.stringify(userData),
   });
-};*/
-
-// ========== INVENTARIO (ASSETS) ==========
-export const getInventory = async (params = {}) => {
-  const query = new URLSearchParams(params).toString();
-  const response = await request(`/inventory${query ? `?${query}` : ''}`);
-  return response.assets || [];
 };
 
-export const getInventoryById = async (id) => {
-  const response = await request(`/inventory/${id}`);
-  return response.asset;
-};
-
-export const createInventoryItem = async (item) => {
-  // Convertir del formato del frontend al backend
-  const backendItem = {
-    name: item.nombre,
-    description: item.descripcion,
-    category_id: getCategoryIdByType(item.tipo),
-    asset_code: `ASSET-${Date.now()}`, // Generar código único
-    status: item.estado.toLowerCase().replace(' ', '_'),
-    purchase_price: parseFloat(item.valorEstimado),
-    brand: item.marca || '',
-    model: item.modelo || ''
-  };
-  
-  return request('/inventory', {
-    method: 'POST',
-    body: JSON.stringify(backendItem),
-  });
-};
-
-export const updateInventoryItem = async (id, item) => {
-  const backendItem = {
-    name: item.nombre,
-    description: item.descripcion,
-    category_id: getCategoryIdByType(item.tipo),
-    status: item.estado.toLowerCase().replace(' ', '_'),
-    purchase_price: parseFloat(item.valorEstimado),
-  };
-  
-  return request(`/inventory/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(backendItem),
-  });
-};
-
-export const deleteInventoryItem = async (id) => {
-  return request(`/inventory/${id}`, {
-    method: 'DELETE',
-  });
-};
-
-// Función auxiliar para mapear tipos a category_id
-function getCategoryIdByType(tipo) {
-  const mapping = {
-    'Computadora': 1,
-    'Impresora': 2,
-    'Cámara': 3,
-    'Red': 4,
-    'Software': 5,
-    'Otro': 8
-  };
-  return mapping[tipo] || 8;
-}
-
-// ========== INCIDENCIAS ==========
-export const getIncidents = async (params = {}) => {
-  const query = new URLSearchParams(params).toString();
-  const response = await request(`/incidents${query ? `?${query}` : ''}`);
-  return response.incidents || [];
-};
-
-export const getIncidentById = async (id) => {
-  const response = await request(`/incidents/${id}`);
-  return response.incident;
-};
-
-export const createIncident = async (incident) => {
-  const backendIncident = {
-    title: incident.titulo || incident.title,
-    description: incident.descripcion || incident.description,
-    priority: incident.prioridad?.toLowerCase() || 'medium',
-    asset_id: incident.idActivo || incident.asset_id
-  };
-  
-  return request('/incidents', {
-    method: 'POST',
-    body: JSON.stringify(backendIncident),
-  });
-};
-
-export const updateIncidentStatus = async (id, status) => {
-  return request(`/incidents/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({ status }),
-  });
-};
-
-// ========== MANTENIMIENTO ==========
-export const getMaintenance = async (params = {}) => {
-  const query = new URLSearchParams(params).toString();
-  const response = await request(`/maintenance${query ? `?${query}` : ''}`);
-  return response.maintenances || [];
-};
-
-export const createMaintenance = async (maintenance) => {
-  const backendMaintenance = {
-    asset_id: maintenance.idActivo || maintenance.asset_id,
-    type: maintenance.tipo?.toLowerCase() || 'preventive',
-    title: maintenance.titulo || `Mantenimiento ${maintenance.tipo}`,
-    description: maintenance.notas || maintenance.description,
-    scheduled_date: maintenance.fechaInicio || maintenance.scheduled_date,
-    cost: parseFloat(maintenance.costosEstimados || maintenance.cost || 0)
-  };
-  
-  return request('/maintenance', {
-    method: 'POST',
-    body: JSON.stringify(backendMaintenance),
-  });
-};
-
-export const completeMaintenance = async (id) => {
-  return request(`/maintenance/${id}/complete`, {
-    method: 'PUT',
-    body: JSON.stringify({ notes: 'Completado desde el sistema' }),
-  });
-};
-
-// ========== FORMATOS RESPONSIVOS ==========
-export const getResponsiveForms = async (params = {}) => {
-  const query = new URLSearchParams(params).toString();
-  const response = await request(`/responsive-forms${query ? `?${query}` : ''}`);
-  return response.forms || [];
-};
-
-export const createResponsiveForm = async (form) => {
-  const backendForm = {
-    asset_id: form.idActivo || form.asset_id,
-    new_responsible_id: 1, // Usuario por defecto, ajustar según necesidad
-    transfer_date: new Date().toISOString().split('T')[0],
-    reason: `Asignación de ${form.tipoequipo}`,
-    conditions: `Marca: ${form.marca}, Serie: ${form.serie}`
-  };
-  
-  return request('/responsive-forms', {
-    method: 'POST',
-    body: JSON.stringify(backendForm),
-  });
-};
-
-export const returnAsset = async (id) => {
-  return request(`/responsive-forms/${id}/return`, {
-    method: 'PUT',
-  });
-};
-
-export const downloadResponsiveFormPDF = async (id) => {
-  const token = localStorage.getItem('token');
-  const response = await fetch(`${API_URL}/responsive-forms/${id}/pdf`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-  
-  if (!response.ok) throw new Error('Error al descargar PDF');
-  
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `formato-responsivo-${id}.pdf`;
-  a.click();
-};
-
-// ========== REQUISICIONES ==========
-export const getRequisitions = async () => {
-  // Por ahora devolver array vacío ya que no está implementado en el backend
-  return [];
-};
-
-export const createRequisition = async (requisition) => {
-  // Implementar cuando el backend esté listo
-  console.log('Crear requisición:', requisition);
-  return { message: 'Funcionalidad en desarrollo' };
-};
-
-export const updateRequisitionStatus = async (id, status) => {
-  console.log('Actualizar requisición:', id, status);
-  return { message: 'Funcionalidad en desarrollo' };
-};
-
-export const downloadRequisitionPDF = async (id) => {
-  console.log('Descargar PDF requisición:', id);
-};
-
-// ========== REPORTES ==========
-export const getReports = async () => {
-  const response = await request('/reports/dashboard');
-  return response.dashboard || {};
-};
-
-export const downloadInventoryReport = async () => {
-  const token = localStorage.getItem('token');
-  const response = await fetch(`${API_URL}/reports/inventory`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-  
-  if (!response.ok) throw new Error('Error al descargar reporte');
-  
-  const data = await response.json();
-  console.log('Reporte de inventario:', data);
-  // Aquí puedes agregar lógica para descargar como PDF
-};
-
-// ========== USUARIOS ==========
-export const getUsers = async () => {
-  // Por ahora devolver array vacío ya que no hay endpoint en el backend
-  return [];
-};
-
-export const updateUser = async (id, userData) => {
-  console.log('Actualizar usuario:', id, userData);
-  return { message: 'Funcionalidad en desarrollo' };
-};
-
-// Export default con todas las funciones
+// Export default
 const api = {
   login,
   register,
@@ -304,23 +381,19 @@ const api = {
   updateInventoryItem,
   deleteInventoryItem,
   getIncidents,
-  getIncidentById,
   createIncident,
-  updateIncidentStatus,
   getMaintenance,
   createMaintenance,
   completeMaintenance,
   getResponsiveForms,
   createResponsiveForm,
-  returnAsset,
-  downloadResponsiveFormPDF,
   getRequisitions,
   createRequisition,
   updateRequisitionStatus,
   downloadRequisitionPDF,
   getReports,
-  downloadInventoryReport,
   getUsers,
+  createUser,
   updateUser
 };
 

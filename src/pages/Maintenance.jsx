@@ -26,8 +26,11 @@ export default function Maintenance() {
         api.getMaintenance(),
         api.getInventory()
       ]);
+
+      console.log('📦 Activos recibidos:', assetsData);
+
       setMaintenances(maintenanceData);
-      setAssets(assetsData);
+      setAssets(assetsData); // ✅ Ya vienen formateados de getInventory
     } catch (error) {
       console.error('Error al cargar datos:', error);
       alert('Error al cargar los mantenimientos');
@@ -253,7 +256,7 @@ export default function Maintenance() {
                   <select
                     required
                     value={formData.idActivo}
-                    onChange={(e) => setFormData({...formData, idActivo: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, idActivo: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Seleccionar activo...</option>
@@ -271,7 +274,7 @@ export default function Maintenance() {
                   <select
                     required
                     value={formData.tipo}
-                    onChange={(e) => setFormData({...formData, tipo: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="Preventivo">Preventivo</option>
@@ -286,7 +289,7 @@ export default function Maintenance() {
                     type="date"
                     required
                     value={formData.fechaInicio}
-                    onChange={(e) => setFormData({...formData, fechaInicio: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -297,7 +300,7 @@ export default function Maintenance() {
                   <textarea
                     required
                     value={formData.notas}
-                    onChange={(e) => setFormData({...formData, notas: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     rows="3"
                     placeholder="Descripción del mantenimiento..."
@@ -312,7 +315,7 @@ export default function Maintenance() {
                     step="0.01"
                     required
                     value={formData.costosEstimados}
-                    onChange={(e) => setFormData({...formData, costosEstimados: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, costosEstimados: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
