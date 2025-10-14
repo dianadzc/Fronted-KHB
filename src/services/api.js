@@ -344,6 +344,27 @@ export const downloadRequisitionPDF = async (id) => {
   }
 };
 
+// ========== CLIENTES ==========
+export const getClients = async () => {
+  try {
+    const response = await request('/clients');
+    return response.clients || [];
+  } catch (error) {
+    console.error('❌ Error al obtener clientes:', error);
+    return [];
+  }
+};
+
+export const createClient = async (clientData) => {
+  console.log('👤 Creando cliente:', clientData);
+  
+  return request('/clients', {
+    method: 'POST',
+    body: JSON.stringify(clientData),
+  });
+};
+
+
 // ========== REPORTES ==========
 export const getReports = async () => {
   const response = await request('/reports/dashboard');
@@ -387,6 +408,8 @@ const api = {
   completeMaintenance,
   getResponsiveForms,
   createResponsiveForm,
+   getClients,
+  createClient,
   getRequisitions,
   createRequisition,
   updateRequisitionStatus,
