@@ -320,6 +320,17 @@ export const createRequisition = async (requisition) => {
     throw error;
   }
 };
+
+// Función para actualizar una requisición existente
+export const updateRequisition = async (id, data) => {
+  console.log('✏️ Actualizando requisición:', id, data);
+  
+  return request(`/requisitions/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
 // Función para actualizar el estado de una requisición (aprobar/rechazar)
 export const updateRequisitionStatus = async (id, approved) => {
   console.log(`${approved ? '✅' : '❌'} Actualizando estado:`, { id, approved });
@@ -412,6 +423,7 @@ const api = {
   createClient,
   getRequisitions,
   createRequisition,
+  updateRequisition,
   updateRequisitionStatus,
   downloadRequisitionPDF,
   getReports,
