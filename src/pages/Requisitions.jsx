@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Download, CheckCircle, XCircle, Clock, UserPlus, Eye, Edit, Trash2 } from 'lucide-react';
+import { ShoppingCart, Plus, Download, Clock, UserPlus, Eye, Edit } from 'lucide-react';
 import { generateRequisitionPDF, previewRequisitionPDF } from '../services/pdfGenerator';
 import api from '../services/api';
 
@@ -10,7 +10,7 @@ export default function Requisitions() {
   const [showModal, setShowModal] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState('Todas');
-  const [editingId, setEditingId] = useState(null); // ✅ Nuevo estado
+  const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     request_type: 'transferencia',
     amount: '',
@@ -45,11 +45,9 @@ export default function Requisitions() {
     e.preventDefault();
     try {
       if (editingId) {
-        // ✅ Editar
         await api.updateRequisition(editingId, formData);
         alert('Requisición actualizada exitosamente');
       } else {
-        // Crear nueva
         await api.createRequisition(formData);
         alert('Requisición creada exitosamente');
       }
@@ -67,24 +65,13 @@ export default function Requisitions() {
     try {
       const result = await api.createClient(newClient);
       setClients([...clients, result.client]);
-      setFormData({...formData, payable_to: result.client.name});
+      setFormData({ ...formData, payable_to: result.client.name });
       setShowClientModal(false);
       setNewClient({ name: '' });
       alert('Cliente agregado exitosamente');
     } catch (error) {
       console.error('Error al crear cliente:', error);
       alert(error.message || 'Error al crear el cliente');
-    }
-  };
-
-  const handleStatusChange = async (id, approved) => {
-    try {
-      await api.updateRequisitionStatus(id, approved);
-      loadData();
-      alert(`Requisición ${approved ? 'aprobada' : 'rechazada'} exitosamente`);
-    } catch (error) {
-      console.error('Error al actualizar estado:', error);
-      alert('Error al actualizar el estado');
     }
   };
 
@@ -98,7 +85,6 @@ export default function Requisitions() {
     }
   };
 
-  // ✅ Nueva función para visualizar PDF
   const handleViewPDF = async (id) => {
     try {
       const requisition = await api.downloadRequisitionPDF(id);
@@ -109,7 +95,6 @@ export default function Requisitions() {
     }
   };
 
-  // ✅ Nueva función para editar
   const handleEdit = (requisition) => {
     setEditingId(requisition._id || requisition.id);
     setFormData({
@@ -159,10 +144,7 @@ export default function Requisitions() {
   };
 
   const statusIcons = {
-    'pending': <Clock className="w-4 h-4" />,
-    'approved': <CheckCircle className="w-4 h-4" />,
-    'rejected': <XCircle className="w-4 h-4" />,
-    'completed': <CheckCircle className="w-4 h-4" />
+    'pending': <Clock className="w-4 h-4" />
   };
 
   if (loading) {
@@ -189,7 +171,7 @@ export default function Requisitions() {
             resetForm();
             setShowModal(true);
           }}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-lg"
+          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-lg transition-colors"
         >
           <Plus className="w-5 h-5" />
           Nueva Requisición
@@ -200,21 +182,26 @@ export default function Requisitions() {
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
           <div className="flex gap-2">
-            {['Todas', 'Pending', 'Approved', 'Rejected'].map((status) => (
+            {['Todas', 'Pending'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  filterStatus === status
+                className={`px-4 py-2 rounded-lg transition-colors ${filterStatus === status
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                  }`}
               >
-                {status === 'Todas' ? 'Todas' : statusLabels[status.toLowerCase()]}
+                {status === 'Todas' ? 'Todas' : 'Pendientes'}
               </button>
             ))}
           </div>
           <div className="flex gap-6">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {requisitions.length}
+              </div>
+              <div className="text-sm text-gray-600">Total</div>
+            </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-yellow-600">
                 {requisitions.filter(r => r.status === 'pending').length}
@@ -222,19 +209,12 @@ export default function Requisitions() {
               <div className="text-sm text-gray-600">Pendientes</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {requisitions.filter(r => r.status === 'approved').length}
-              </div>
-              <div className="text-sm text-gray-600">Aprobadas</div>
-            </div>
-            <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
                 ${requisitions
-                  .filter(r => r.status === 'approved')
                   .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0)
                   .toLocaleString('es-MX', { minimumFractionDigits: 2 })}
               </div>
-              <div className="text-sm text-gray-600">Total Aprobado</div>
+              <div className="text-sm text-gray-600">Monto Total</div>
             </div>
           </div>
         </div>
@@ -243,7 +223,7 @@ export default function Requisitions() {
       {/* Lista de requisiciones */}
       <div className="grid gap-4">
         {filteredRequisitions.map((req) => (
-          <div key={req._id || req.id} className="bg-white rounded-lg shadow-md p-6">
+          <div key={req._id || req.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-3">
@@ -258,7 +238,7 @@ export default function Requisitions() {
                     {requestTypeLabels[req.request_type] || req.request_type}
                   </span>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4 mb-3">
                   <div>
                     <p className="text-sm text-gray-600">A favor de:</p>
@@ -286,11 +266,11 @@ export default function Requisitions() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2">
-                {/* ✅ Botón Ver PDF */}
+              <div className="flex flex-col gap-2 ml-4">
+                {/* Botón Ver PDF */}
                 <button
                   onClick={() => handleViewPDF(req._id || req.id)}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2 transition-colors"
                   title="Ver PDF en nueva pestaña"
                 >
                   <Eye className="w-4 h-4" />
@@ -300,43 +280,23 @@ export default function Requisitions() {
                 {/* Botón Descargar PDF */}
                 <button
                   onClick={() => handleDownloadPDF(req._id || req.id)}
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2 transition-colors"
                   title="Descargar PDF"
                 >
                   <Download className="w-4 h-4" />
                   Descargar
                 </button>
 
-                {/* ✅ Botón Editar (solo si está pendiente) */}
+                {/* Botón Editar (solo si está pendiente) */}
                 {req.status === 'pending' && (
                   <button
                     onClick={() => handleEdit(req)}
-                    className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 flex items-center gap-2"
+                    className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 flex items-center gap-2 transition-colors"
                     title="Editar requisición"
                   >
                     <Edit className="w-4 h-4" />
                     Editar
                   </button>
-                )}
-
-                {/* Botones Aprobar/Rechazar */}
-                {req.status === 'pending' && (
-                  <>
-                    <button
-                      onClick={() => handleStatusChange(req._id || req.id, true)}
-                      className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      Aprobar
-                    </button>
-                    <button
-                      onClick={() => handleStatusChange(req._id || req.id, false)}
-                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center gap-2"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Rechazar
-                    </button>
-                  </>
                 )}
               </div>
             </div>
@@ -344,7 +304,7 @@ export default function Requisitions() {
         ))}
         {filteredRequisitions.length === 0 && (
           <div className="text-center py-12 text-gray-500 bg-white rounded-lg shadow-md">
-            No hay requisiciones {filterStatus !== 'Todas' && `con estado "${statusLabels[filterStatus.toLowerCase()]}"`}
+            No hay requisiciones {filterStatus !== 'Todas' && 'pendientes'}
           </div>
         )}
       </div>
@@ -354,15 +314,15 @@ export default function Requisitions() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center gap-3 mb-6">
-              <img 
-                src="http://localhost:5000/public/images/beachscape-logo.png" 
-                alt="Beachscape Logo" 
+              <img
+                src="http://localhost:5000/public/images/beachscape-logo.png"
+                alt="Beachscape Logo"
                 className="h-16"
                 onError={(e) => e.target.style.display = 'none'}
               />
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">
-                  {editingId ? 'EDITAR REQUISICIÓN' : 'SOLICITUD DE TRANSFERENCIA'}
+                  {editingId ? 'EDITAR REQUISICIÓN' : 'NUEVA REQUISICIÓN'}
                 </h2>
                 <p className="text-sm text-gray-600">Beachscape Kin Ha Villas & Suites</p>
               </div>
@@ -378,7 +338,7 @@ export default function Requisitions() {
                   <select
                     required
                     value={formData.request_type}
-                    onChange={(e) => setFormData({...formData, request_type: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, request_type: e.target.value })}
                     className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="transferencia">TRANSFERENCIA</option>
@@ -396,10 +356,10 @@ export default function Requisitions() {
                     </label>
                     <input
                       type="text"
-                      value={new Date().toLocaleDateString('es-MX', { 
-                        day: '2-digit', 
-                        month: 'long', 
-                        year: 'numeric' 
+                      value={new Date().toLocaleDateString('es-MX', {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric'
                       }).toUpperCase()}
                       disabled
                       className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg bg-gray-50"
@@ -414,7 +374,7 @@ export default function Requisitions() {
                       step="0.01"
                       required
                       value={formData.amount}
-                      onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                       className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="0.00"
                     />
@@ -429,7 +389,7 @@ export default function Requisitions() {
                       name="currency"
                       value="MXN"
                       checked={formData.currency === 'MXN'}
-                      onChange={(e) => setFormData({...formData, currency: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                       className="w-4 h-4"
                     />
                     <span className="text-sm font-medium">MXN</span>
@@ -440,7 +400,7 @@ export default function Requisitions() {
                       name="currency"
                       value="USD"
                       checked={formData.currency === 'USD'}
-                      onChange={(e) => setFormData({...formData, currency: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                       className="w-4 h-4"
                     />
                     <span className="text-sm font-medium">USD</span>
@@ -465,7 +425,7 @@ export default function Requisitions() {
                   <select
                     required
                     value={formData.payable_to}
-                    onChange={(e) => setFormData({...formData, payable_to: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, payable_to: e.target.value })}
                     className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Seleccionar cliente...</option>
@@ -490,7 +450,7 @@ export default function Requisitions() {
                   <textarea
                     required
                     value={formData.concept}
-                    onChange={(e) => setFormData({...formData, concept: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, concept: e.target.value })}
                     className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     rows="3"
                     placeholder="Describe el motivo de la solicitud..."
@@ -516,7 +476,7 @@ export default function Requisitions() {
               <div className="flex gap-3 mt-6">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold"
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold transition-colors"
                 >
                   {editingId ? 'Actualizar Requisición' : 'Crear Requisición'}
                 </button>
@@ -526,7 +486,7 @@ export default function Requisitions() {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg hover:bg-gray-300 font-semibold"
+                  className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
                 >
                   Cancelar
                 </button>
@@ -551,7 +511,7 @@ export default function Requisitions() {
                     type="text"
                     required
                     value={newClient.name}
-                    onChange={(e) => setNewClient({name: e.target.value})}
+                    onChange={(e) => setNewClient({ name: e.target.value })}
                     className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                     placeholder="Ej: DAYJAF INTEGRALES"
                   />
@@ -563,7 +523,7 @@ export default function Requisitions() {
               <div className="flex gap-3 mt-6">
                 <button
                   type="submit"
-                  className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 font-semibold flex items-center justify-center gap-2"
+                  className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 font-semibold flex items-center justify-center gap-2 transition-colors"
                 >
                   <UserPlus className="w-5 h-5" />
                   Agregar Cliente
@@ -574,7 +534,7 @@ export default function Requisitions() {
                     setShowClientModal(false);
                     setNewClient({ name: '' });
                   }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 font-semibold"
+                  className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
                 >
                   Cancelar
                 </button>
