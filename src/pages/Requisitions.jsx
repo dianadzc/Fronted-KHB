@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Download, Clock, UserPlus, Eye, Edit } from 'lucide-react';
+import { ShoppingCart, Plus, Download, Clock, UserPlus, Eye, Edit, Trash2 } from 'lucide-react';
 import { generateRequisitionPDF, previewRequisitionPDF } from '../services/pdfGenerator';
 import api from '../services/api';
 
@@ -107,6 +107,24 @@ export default function Requisitions() {
     setShowModal(true);
   };
 
+  // Función para eliminar
+  const handleDelete = async (id) => {
+    const confirmDelete = window.confirm(
+      '¿Estás seguro de que deseas eliminar esta requisición?\n\nEsta acción no se puede deshacer.'
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      await api.deleteRequisition(id);
+      alert('Requisición eliminada exitosamente');
+      loadData();
+    } catch (error) {
+      console.error('Error al eliminar requisición:', error);
+      alert(error.message || 'Error al eliminar la requisición');
+    }
+  };
+
   const resetForm = () => {
     setEditingId(null);
     setFormData({
@@ -187,8 +205,8 @@ export default function Requisitions() {
                 key={status}
                 onClick={() => setFilterStatus(status)}
                 className={`px-4 py-2 rounded-lg transition-colors ${filterStatus === status
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
               >
                 {status === 'Todas' ? 'Todas' : 'Pendientes'}
@@ -298,6 +316,17 @@ export default function Requisitions() {
                     Editar
                   </button>
                 )}
+                {/* Botón Eliminar */}
+                <button
+                  onClick={() => handleDelete(req._id || req.id)}
+                  className="px-3 sm:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center justify-center gap-2 transition-colors text-sm"
+                  title="Eliminar requisición"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Eliminar</span>
+                  <span className="sm:hidden">Eliminar</span>
+                </button>
+
               </div>
             </div>
           </div>
@@ -349,20 +378,17 @@ export default function Requisitions() {
                 </div>
 
                 {/* Fecha y Monto */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      FECHA
+                      FECHA *
                     </label>
                     <input
-                      type="text"
-                      value={new Date().toLocaleDateString('es-MX', {
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric'
-                      }).toUpperCase()}
-                      disabled
-                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg bg-gray-50"
+                      type="date"
+                      required
+                      value={formData.request_date || new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setFormData({ ...formData, request_date: e.target.value })}
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                     />
                   </div>
                   <div>
@@ -375,7 +401,7 @@ export default function Requisitions() {
                       required
                       value={formData.amount}
                       onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                       placeholder="0.00"
                     />
                   </div>

@@ -86,7 +86,7 @@ const generarContenidoPDF = async (doc, requisition) => {
   const logo = await cargarLogo();
   if (logo) {
     try {
-      doc.addImage(logo, 'PNG', 15, 10, 60, 25);
+      doc.addImage(logo, 'PNG', 15, 8, 50, 20);
     } catch (error) {
       console.error('Error al agregar logo:', error);
     }
@@ -100,17 +100,19 @@ const generarContenidoPDF = async (doc, requisition) => {
     'pago_linea': 'PAGO EN LÍNEA'
   };
   
-  let y = 15;
+  // Resetear color de texto
+  doc.setTextColor(0, 0, 0);
+  
+  let y = 12;
   
   // Título: SOLICITUD DE [TIPO]
-  doc.setFontSize(18);
+  doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
   doc.text(`SOLICITUD DE ${tipoLabels[requisition.request_type] || 'TRANSFERENCIA'}`, 105, y, { align: 'center' });
   
-  y = 45;
-  
-  // Línea superior
-  doc.setLineWidth(0.5);
+  // Línea horizontal superior
+  y = 32;
+  doc.setLineWidth(0.8);
   doc.line(15, y, 195, y);
   
   y += 8;
@@ -125,32 +127,33 @@ const generarContenidoPDF = async (doc, requisition) => {
     month: 'long',
     year: 'numeric'
   }).toUpperCase();
-  doc.text(fecha, 32, y);
+  doc.text(fecha, 35, y);
   
   doc.setFont('helvetica', 'bold');
-  doc.text('POR LA CANTIDAD DE: $', 100, y);
+  doc.text('POR LA CANTIDAD DE: $', 105, y);
   doc.setFont('helvetica', 'normal');
   const montoTexto = parseFloat(requisition.amount).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  doc.text(montoTexto, 145, y);
+  doc.text(montoTexto, 155, y);
   
   // Checkbox M.N. o USD
   doc.setFont('helvetica', 'bold');
-  doc.rect(170, y - 4, 4, 4);
+  doc.setLineWidth(0.5);
+  doc.rect(175, y - 4, 4, 4);
   if (requisition.currency === 'MXN') {
-    doc.text('X', 171, y - 0.5);
+    doc.text('X', 176, y - 0.5);
   }
   doc.setFont('helvetica', 'normal');
-  doc.text('M.N.', 176, y);
+  doc.text('M.N.', 181, y);
   
-  doc.rect(188, y - 4, 4, 4);
+  doc.rect(193, y - 4, 4, 4);
   if (requisition.currency === 'USD') {
     doc.setFont('helvetica', 'bold');
-    doc.text('X', 189, y - 0.5);
+    doc.text('X', 194, y - 0.5);
+    doc.setFont('helvetica', 'normal');
   }
-  doc.setFont('helvetica', 'normal');
-  doc.text('USD', 193, y);
+  doc.text('USD', 198, y);
   
-  y += 8;
+  y += 10;
   
   // IMPORTE CON LETRAS
   doc.setFont('helvetica', 'bold');
@@ -158,70 +161,91 @@ const generarContenidoPDF = async (doc, requisition) => {
   y += 5;
   doc.setFont('helvetica', 'normal');
   const montoLetras = numeroALetras(parseFloat(requisition.amount));
-  const lineasMonto = doc.splitTextToSize(montoLetras, 180);
-  doc.text(lineasMonto, 15, y);
-  
-  y += lineasMonto.length * 5 + 5;
-  
-  // Línea separadora
-  doc.setLineWidth(0.3);
-  doc.line(15, y, 195, y);
-  y += 8;
-  
-  // A FAVOR DE
-  doc.setFont('helvetica', 'bold');
-  doc.text('A FAVOR DE:', 15, y);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(11);
-  doc.text(requisition.payable_to || 'N/A', 45, y);
+  doc.text(montoLetras, 15, y);
   
   y += 10;
   
-  // CONCEPTO
+  // Línea separadora gruesa
+  doc.setLineWidth(0.8);
+  doc.line(15, y, 195, y);
+  y += 10;
+  
+  // A FAVOR DE con línea debajo
+  doc.setFont('helvetica', 'bold');
+  doc.text('A FAVOR DE:', 15, y);
+  
+  // Texto sobre la línea (primero el texto)
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.text(requisition.payable_to || 'N/A', 56, y);
+  
+  // Línea para escribir (después del texto)
+  const lineaFavorY = y + 2;
+  doc.setLineWidth(0.3);
+  doc.line(55, lineaFavorY, 195, lineaFavorY);
+  
+  y += 15;
+  
+  // CONCEPTO con líneas debajo
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text('CONCEPTO:', 15, y);
-  y += 5;
+  
+  y += 6;
+  
+  // Dividir concepto en líneas
   doc.setFont('helvetica', 'normal');
-  const conceptoLineas = doc.splitTextToSize(requisition.concept || '', 180);
-  doc.text(conceptoLineas, 15, y);
+  const conceptoLineas = doc.splitTextToSize(requisition.concept || '', 175);
   
-  y += conceptoLineas.length * 5 + 8;
+  // Dibujar texto y líneas
+  conceptoLineas.forEach((linea, index) => {
+    const lineaY = y + (index * 8);
+    
+    // Texto
+    doc.text(linea, 15, lineaY);
+    
+    // Línea horizontal debajo
+    doc.setLineWidth(0.3);
+    doc.line(15, lineaY + 2, 195, lineaY + 2);
+  });
   
-  // Línea separadora
-  doc.line(15, y, 195, y);
-  y += 8;
+  y += (conceptoLineas.length * 8) + 8;
   
+
   // DEPARTAMENTO
   doc.setFont('helvetica', 'bold');
   doc.text('DEPARTAMENTO:', 15, y);
   doc.setFont('helvetica', 'normal');
-  doc.text('SISTEMAS', 55, y);
+  doc.text('SISTEMAS', 58, y);
   
-  // FIRMAS (posición fija en la parte inferior)
-  y = 250;
+  // ✅ FIRMAS DINÁMICAS - Se ajustan según el contenido
+  y += 15; // Espacio después de departamento
   
-  doc.setLineWidth(0.5);
-  
-  // Línea horizontal antes de las firmas
-  //doc.line(15, y - 10, 90, y - 10);
+
+  y += 20; // Espacio para las firmas
   
   // Solicitó (izquierda)
-  doc.line(30, y-10, 85, y -10);
+  doc.setLineWidth(0.5);
+  doc.line(25, y, 90, y);
+  
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text('GILBERTO PÉREZ SOSA', 57.5, y - 3, { align: 'center' });
   doc.setFont('helvetica', 'bold');
-  doc.text('Nombre y Firma', 57.5, y + 5, { align: 'center' });
+  doc.text('GILBERTO PÉREZ SOSA', 57.5, y + 5, { align: 'center' });
+  
+  doc.setFont('helvetica', 'normal');
+  doc.text('Nombre y Firma', 57.5, y + 10, { align: 'center' });
   
   // Autorizó (derecha)
-  doc.line(125, y -10, 180, y -10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('CP. JORGE ARRIAGA', 152.5, y - 3, { align: 'center' });
-  doc.setFont('helvetica', 'bold');
-  doc.text('Autorizo', 152.5, y + 5, { align: 'center' });
+  doc.line(120, y, 185, y);
   
-  // Footer
+  doc.setFont('helvetica', 'bold');
+  doc.text('CP. JORGE ARRIAGA', 152.5, y + 5, { align: 'center' });
+  
+  doc.setFont('helvetica', 'normal');
+  doc.text('Autorizó', 152.5, y + 10, { align: 'center' });
+  
+  // Footer - También dinámico
+  y += 20;
   doc.setFontSize(7);
   doc.setTextColor(100);
   doc.setFont('helvetica', 'normal');
@@ -229,6 +253,7 @@ const generarContenidoPDF = async (doc, requisition) => {
   
   return doc;
 };
+
 
 // Generar y descargar PDF
 export const generateRequisitionPDF = async (requisition) => {

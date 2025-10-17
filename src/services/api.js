@@ -266,16 +266,63 @@ export const completeMaintenance = async (id) => {
 };
 
 // ========== FORMATOS RESPONSIVOS ==========
-export const getResponsiveForms = async (params = {}) => {
-  const query = new URLSearchParams(params).toString();
-  const response = await request(`/responsive-forms${query ? `?${query}` : ''}`);
-  return response.forms || [];
+export const getResponsiveForms = async () => {
+  console.log('📋 Obteniendo formatos responsivos...');
+  return request('/responsive-forms');
 };
 
-export const createResponsiveForm = async (form) => {
+export const createResponsiveForm = async (data) => {
+  console.log('➕ Creando formato responsivo:', data);
   return request('/responsive-forms', {
     method: 'POST',
-    body: JSON.stringify(form),
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateResponsiveForm = async (id, data) => {
+  console.log('✏️ Actualizando formato responsivo:', id, data);
+  return request(`/responsive-forms/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteResponsiveForm = async (id) => {
+  console.log('🗑️ Eliminando formato responsivo:', id);
+  return request(`/responsive-forms/${id}`, {
+    method: 'DELETE',
+  });
+};
+
+export const downloadResponsiveFormPDF = async (id) => {
+  console.log('📄 Descargando PDF de formato responsivo:', id);
+  return request(`/responsive-forms/${id}`);
+};
+
+// Catálogos
+export const getEquipments = async () => {
+  console.log('🖥️ Obteniendo catálogo de equipos...');
+  return request('/responsive-forms/catalog/equipments');
+};
+
+export const createEquipment = async (data) => {
+  console.log('➕ Agregando equipo:', data);
+  return request('/responsive-forms/catalog/equipments', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const getEmployees = async () => {
+  console.log('👥 Obteniendo catálogo de empleados...');
+  return request('/responsive-forms/catalog/employees');
+};
+
+export const createEmployee = async (data) => {
+  console.log('➕ Agregando empleado:', data);
+  return request('/responsive-forms/catalog/employees', {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 };
 
@@ -354,7 +401,13 @@ export const downloadRequisitionPDF = async (id) => {
     throw error;
   }
 };
-
+// Función para eliminar una requisición
+export const deleteRequisition = async (id) => {
+  console.log('🗑️ Eliminando requisición:', id);
+  return request(`/requisitions/${id}`, {
+    method: 'DELETE',
+  });
+};
 // ========== CLIENTES ==========
 export const getClients = async () => {
   try {
@@ -404,29 +457,46 @@ export const updateUser = async (id, userData) => {
 
 // Export default
 const api = {
+  // Auth
   login,
   register,
   getProfile,
+  // Inventory
   getInventory,
   getInventoryById,
   createInventoryItem,
   updateInventoryItem,
   deleteInventoryItem,
+  // Incidents
   getIncidents,
   createIncident,
+  // Maintenance
   getMaintenance,
   createMaintenance,
   completeMaintenance,
+  // Responsive Forms
   getResponsiveForms,
   createResponsiveForm,
+  updateResponsiveForm,
+  deleteResponsiveForm,
+  downloadResponsiveFormPDF,
+  getEquipments,
+  createEquipment,
+  getEmployees,
+  createEmployee,
+  // Clients
    getClients,
   createClient,
+  // Requisitions
   getRequisitions,
   createRequisition,
   updateRequisition,
   updateRequisitionStatus,
+  deleteRequisition,
   downloadRequisitionPDF,
+  // Reports
   getReports,
+  // Users
   getUsers,
   createUser,
   updateUser
