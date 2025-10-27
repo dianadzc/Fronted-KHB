@@ -1,3 +1,4 @@
+// src/pages/NotFound.jsx
 import { useNavigate } from 'react-router-dom';
 import { Home, AlertTriangle } from 'lucide-react';
 

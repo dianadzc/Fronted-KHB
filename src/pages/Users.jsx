@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Users as UsersIcon, UserPlus, Edit, Shield, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Edit, Users as UsersIcon, CheckCircle, XCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../services/api';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -9,9 +11,9 @@ export default function Users() {
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({
     username: '',
-    email: '',
-    full_name: '',
     password: '',
+    full_name: '',
+    email: '',
     role: 'user',
     department: ''
   });
@@ -27,7 +29,7 @@ export default function Users() {
       setUsers(data);
     } catch (error) {
       console.error('Error al cargar usuarios:', error);
-      alert('Error al cargar los usuarios');
+      toast.error('Error al cargar usuarios');
     } finally {
       setLoading(false);
     }
@@ -37,25 +39,18 @@ export default function Users() {
     e.preventDefault();
     try {
       if (editingUser) {
-        await api.updateUser(editingUser.id, {
-          email: formData.email,
-          full_name: formData.full_name,
-          role: formData.role,
-          department: formData.department,
-          active: true,
-          ...(formData.password && { password: formData.password })
-        });
-        alert('Usuario actualizado exitosamente');
+        await api.updateUser(editingUser.id, formData);
+        toast.success('Usuario actualizado exitosamente');
       } else {
         await api.createUser(formData);
-        alert('Usuario creado exitosamente');
+        toast.success('Usuario creado exitosamente');
       }
       setShowModal(false);
       resetForm();
       loadUsers();
     } catch (error) {
       console.error('Error al guardar usuario:', error);
-      alert(error.message || 'Error al guardar el usuario');
+      toast.error(error.message || 'Error al guardar el usuario');
     }
   };
 
@@ -63,9 +58,9 @@ export default function Users() {
     setEditingUser(user);
     setFormData({
       username: user.username,
-      email: user.email,
-      full_name: user.full_name,
       password: '',
+      full_name: user.full_name,
+      email: user.email,
       role: user.role,
       department: user.department || ''
     });
@@ -75,32 +70,26 @@ export default function Users() {
   const resetForm = () => {
     setFormData({
       username: '',
-      email: '',
-      full_name: '',
       password: '',
+      full_name: '',
+      email: '',
       role: 'user',
       department: ''
     });
     setEditingUser(null);
   };
 
-  const roleLabels = {
-    'admin': 'Administrador',
-    'user': 'Usuario'
-  };
-
   const roleColors = {
-    'admin': 'bg-purple-100 text-purple-800',
-    'user': 'bg-blue-100 text-blue-800'
+    admin: 'bg-purple-100 text-purple-800',
+    user: 'bg-blue-100 text-blue-800'
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-xl">Cargando usuarios...</div>
-      </div>
-    );
-  }
+  const roleLabels = {
+    admin: 'Administrador',
+    user: 'Usuario'
+  };
+
+  if (loading) return <LoadingSpinner fullScreen message="Cargando usuarios..." />;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -111,58 +100,22 @@ export default function Users() {
             <UsersIcon className="w-8 h-8" />
             Gestión de Usuarios
           </h1>
-          <p className="text-gray-600 mt-1">Administración de cuentas del sistema</p>
+          <p className="text-gray-600 mt-1">Administración de usuarios del sistema</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-lg"
+          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
-          <UserPlus className="w-5 h-5" />
+          <Plus className="w-5 h-5" />
           Nuevo Usuario
         </button>
       </div>
 
-      {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Total Usuarios</p>
-              <p className="text-3xl font-bold text-blue-600">{users.length}</p>
-            </div>
-            <UsersIcon className="w-10 h-10 text-blue-600" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Administradores</p>
-              <p className="text-3xl font-bold text-purple-600">
-                {users.filter(u => u.role === 'admin').length}
-              </p>
-            </div>
-            <Shield className="w-10 h-10 text-purple-600" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Usuarios Activos</p>
-              <p className="text-3xl font-bold text-green-600">
-                {users.filter(u => u.active).length}
-              </p>
-            </div>
-            <CheckCircle className="w-10 h-10 text-green-600" />
-          </div>
-        </div>
-      </div>
-
-      {/* Tabla de usuarios */}
+      {/* Tabla */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre Completo</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
@@ -175,7 +128,6 @@ export default function Users() {
           <tbody className="divide-y divide-gray-200">
             {users.map((user) => (
               <tr key={user.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 text-sm text-gray-900">{user.id}</td>
                 <td className="px-6 py-4">
                   <div className="text-sm font-medium text-gray-900">{user.username}</div>
                 </td>
@@ -231,7 +183,7 @@ export default function Users() {
                       type="text"
                       required
                       value={formData.username}
-                      onChange={(e) => setFormData({...formData, username: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="usuario123"
                     />
@@ -245,7 +197,7 @@ export default function Users() {
                     type="text"
                     required
                     value={formData.full_name}
-                    onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Juan Pérez"
                   />
@@ -258,7 +210,7 @@ export default function Users() {
                     type="email"
                     required
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="usuario@beachscape.com"
                   />
@@ -271,7 +223,7 @@ export default function Users() {
                     type="password"
                     required={!editingUser}
                     value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="••••••••"
                     minLength={6}
@@ -285,7 +237,7 @@ export default function Users() {
                   <select
                     required
                     value={formData.role}
-                    onChange={(e) => setFormData({...formData, role: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="user">Usuario</option>
@@ -302,7 +254,7 @@ export default function Users() {
                   <input
                     type="text"
                     value={formData.department}
-                    onChange={(e) => setFormData({...formData, department: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Sistemas, Recepción, etc."
                   />

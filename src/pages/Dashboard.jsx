@@ -1,4 +1,6 @@
+// src/pages/Dashboard.jsx
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Package, AlertCircle, Wrench, FileText, ShoppingCart, TrendingUp } from 'lucide-react';
 import api from '../services/api';
 

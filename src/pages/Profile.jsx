@@ -1,3 +1,4 @@
+// src/pages/Profile.jsx
 import { useState, useEffect } from 'react';
 import { User, Mail, Building, Shield, Calendar, Edit2 } from 'lucide-react';
 

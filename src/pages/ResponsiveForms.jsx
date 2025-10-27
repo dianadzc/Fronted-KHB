@@ -1,5 +1,7 @@
+// src/pages/ResponsiveForms.jsx - VERSIÓN ACTUALIZADA CON TOAST
 import { useState, useEffect } from 'react';
 import { FileText, Plus, Download, Eye, Edit, Trash2, UserPlus, Laptop } from 'lucide-react';
+import toast from 'react-hot-toast'; // ← IMPORTACIÓN AGREGADA
 import { generateResponsiveFormPDF, previewResponsiveFormPDF } from '../services/responsivePDFGenerator';
 import api from '../services/api';
 
@@ -49,7 +51,7 @@ export default function ResponsiveForms() {
       setEmployees(employeesData);
     } catch (error) {
       console.error('Error al cargar datos:', error);
-      alert('Error al cargar los datos');
+      toast.error('Error al cargar los datos'); // ← CAMBIADO A TOAST
     } finally {
       setLoading(false);
     }
@@ -60,17 +62,17 @@ export default function ResponsiveForms() {
     try {
       if (editingId) {
         await api.updateResponsiveForm(editingId, formData);
-        alert('Responsiva actualizada exitosamente');
+        toast.success('Responsiva actualizada exitosamente'); // ← CAMBIADO A TOAST
       } else {
         await api.createResponsiveForm(formData);
-        alert('Responsiva creada exitosamente');
+        toast.success('Responsiva creada exitosamente'); // ← CAMBIADO A TOAST
       }
       setShowModal(false);
       resetForm();
       loadData();
     } catch (error) {
       console.error('Error:', error);
-      alert(error.message || 'Error al procesar la responsiva');
+      toast.error(error.message || 'Error al procesar la responsiva'); // ← CAMBIADO A TOAST
     }
   };
 
@@ -82,10 +84,10 @@ export default function ResponsiveForms() {
       setFormData({...formData, equipment_type: result.equipment.name});
       setShowEquipmentModal(false);
       setNewEquipment({ name: '' });
-      alert('Equipo agregado exitosamente');
+      toast.success('Equipo agregado exitosamente'); // ← CAMBIADO A TOAST
     } catch (error) {
       console.error('Error al crear equipo:', error);
-      alert(error.message || 'Error al crear el equipo');
+      toast.error(error.message || 'Error al crear el equipo'); // ← CAMBIADO A TOAST
     }
   };
 
@@ -101,10 +103,10 @@ export default function ResponsiveForms() {
       });
       setShowEmployeeModal(false);
       setNewEmployee({ full_name: '', position: '', department: '' });
-      alert('Empleado agregado exitosamente');
+      toast.success('Empleado agregado exitosamente'); // ← CAMBIADO A TOAST
     } catch (error) {
       console.error('Error al crear empleado:', error);
-      alert(error.message || 'Error al crear el empleado');
+      toast.error(error.message || 'Error al crear el empleado'); // ← CAMBIADO A TOAST
     }
   };
 
@@ -112,9 +114,10 @@ export default function ResponsiveForms() {
     try {
       const form = await api.downloadResponsiveFormPDF(id);
       await generateResponsiveFormPDF(form);
+      toast.success('PDF descargado exitosamente'); // ← AGREGADO TOAST DE ÉXITO
     } catch (error) {
       console.error('Error al descargar PDF:', error);
-      alert('Error al descargar el PDF');
+      toast.error('Error al descargar el PDF'); // ← CAMBIADO A TOAST
     }
   };
 
@@ -124,7 +127,7 @@ export default function ResponsiveForms() {
       await previewResponsiveFormPDF(form);
     } catch (error) {
       console.error('Error al visualizar PDF:', error);
-      alert('Error al visualizar el PDF');
+      toast.error('Error al visualizar el PDF'); // ← CAMBIADO A TOAST
     }
   };
 
@@ -150,21 +153,41 @@ export default function ResponsiveForms() {
   };
 
   const handleDelete = async (id) => {
-    const confirmDelete = window.confirm(
-      '¿Estás seguro de que deseas eliminar esta responsiva?\n\nEsta acción no se puede deshacer.'
-    );
-
-    if (!confirmDelete) return;
-
-    try {
-      await api.deleteResponsiveForm(id);
-      alert('Responsiva eliminada exitosamente');
-      loadData();
-    } catch (error) {
-      console.error('Error al eliminar responsiva:', error);
-      alert(error.message || 'Error al eliminar la responsiva');
-    }
-  };
+  // Mostrar toast de confirmación personalizado
+  toast((t) => (
+    <div className="flex flex-col gap-3 ">
+      <p className="font-semibold text-gray-200">¿Estás seguro?</p>
+      <p className="text-sm text-gray-200">Esta acción no se puede deshacer.</p>
+      <div className="flex gap-2">
+        <button
+          onClick={async () => {
+            toast.dismiss(t.id);
+            try {
+              await api.deleteResponsiveForm(id);
+              toast.success('Responsiva eliminada exitosamente');
+              loadData();
+            } catch (error) {
+              console.error('Error al eliminar responsiva:', error);
+              toast.error(error.message || 'Error al eliminar la responsiva');
+            }
+          }}
+          className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium"
+        >
+          Eliminar
+        </button>
+        <button
+          onClick={() => toast.dismiss(t.id)}
+          className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  ), {
+    duration: Infinity, // No se cierra automáticamente
+    position: 'top-center',
+  });
+};
 
   const handleEmployeeSelect = (e) => {
     const selectedEmployee = employees.find(emp => emp.full_name === e.target.value);
@@ -209,8 +232,11 @@ export default function ResponsiveForms() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-xl">Cargando responsivas...</div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Cargando formatos responsivos...</p>
+        </div>
       </div>
     );
   }
@@ -227,11 +253,8 @@ export default function ResponsiveForms() {
           <p className="text-gray-600 mt-1">Gestión de responsivas de equipos</p>
         </div>
         <button
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
         >
           <Plus className="w-5 h-5" />
           Nueva Responsiva
@@ -239,133 +262,215 @@ export default function ResponsiveForms() {
       </div>
 
       {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-md p-6">
-          <p className="text-gray-600 text-sm">Total</p>
-          <p className="text-3xl font-bold text-blue-600">{forms.length}</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-500 text-sm">Total</p>
+              <p className="text-3xl font-bold text-gray-800">{forms.length}</p>
+            </div>
+            <FileText className="w-10 h-10 text-blue-600" />
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <p className="text-gray-600 text-sm">Activas</p>
-          <p className="text-3xl font-bold text-green-600">
-            {forms.filter(f => f.status === 'active').length}
-          </p>
+        <div className="bg-green-50 rounded-lg shadow-md p-6 border-2 border-green-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-700 text-sm font-medium">Activas</p>
+              <p className="text-3xl font-bold text-green-800">
+                {forms.filter(f => f.status === 'active').length}
+              </p>
+            </div>
+            <FileText className="w-10 h-10 text-green-600" />
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <p className="text-gray-600 text-sm">Valor Total</p>
-          <p className="text-2xl font-bold text-purple-600">
-            ${forms
-              .filter(f => f.status === 'active')
-              .reduce((sum, f) => sum + parseFloat(f.acquisition_cost || 0), 0)
-              .toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-          </p>
+        <div className="bg-blue-50 rounded-lg shadow-md p-6 border-2 border-blue-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-700 text-sm font-medium">Devueltas</p>
+              <p className="text-3xl font-bold text-blue-800">
+                {forms.filter(f => f.status === 'returned').length}
+              </p>
+            </div>
+            <FileText className="w-10 h-10 text-blue-600" />
+          </div>
+        </div>
+        <div className="bg-red-50 rounded-lg shadow-md p-6 border-2 border-red-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-red-700 text-sm font-medium">Dañadas</p>
+              <p className="text-3xl font-bold text-red-800">
+                {forms.filter(f => f.status === 'damaged').length}
+              </p>
+            </div>
+            <FileText className="w-10 h-10 text-red-600" />
+          </div>
         </div>
       </div>
 
       {/* Filtros */}
-      <div className="flex gap-2 mb-6">
-        {['Todas', 'Active', 'Returned', 'Damaged'].map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilterStatus(status)}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              filterStatus === status
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {status === 'Todas' ? 'Todas' : statusLabels[status.toLowerCase()]}
-          </button>
-        ))}
+      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="flex gap-2 overflow-x-auto">
+          {['Todas', 'Active', 'Returned', 'Damaged'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilterStatus(status)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                filterStatus === status
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {status === 'Todas' ? 'Todas' : statusLabels[status.toLowerCase()]}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Lista de responsivas */}
-      <div className="grid gap-4">
-        {filteredForms.map((form) => (
-          <div key={form._id || form.id} className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="text-sm font-medium text-gray-500">
-                    {form.form_code || `RESP-${form._id?.slice(-6)}`}
-                  </span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[form.status]}`}>
-                    {statusLabels[form.status]}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mb-3">
-                  <div>
-                    <p className="text-sm text-gray-600">Equipo:</p>
-                    <p className="font-semibold">{form.equipment_type}</p>
-                    <p className="text-sm text-gray-500">{form.brand} - {form.serial_number}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Entregado a:</p>
-                    <p className="font-semibold">{form.employee_name}</p>
-                    <p className="text-sm text-gray-500">{form.employee_position}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Costo:</p>
-                    <p className="font-semibold text-blue-600">
-                      ${parseFloat(form.acquisition_cost || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Fecha:</p>
-                    <p className="text-sm">
-                      {new Date(form.delivery_date || form.createdAt).toLocaleDateString('es-MX')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleViewPDF(form._id || form.id)}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2"
-                >
-                  <Eye className="w-4 h-4" />
-                  Ver
-                </button>
-                <button
-                  onClick={() => handleDownloadPDF(form._id || form.id)}
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  PDF
-                </button>
-                <button
-                  onClick={() => handleEdit(form)}
-                  className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 flex items-center gap-2"
-                >
-                  <Edit className="w-4 h-4" />
-                  Editar
-                </button>
-                <button
-                  onClick={() => handleDelete(form._id || form.id)}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Eliminar
-                </button>
-              </div>
-            </div>
+      {/* Valor Total */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg p-6 mb-6 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-blue-100 text-sm mb-1">Valor Total</p>
+            <p className="text-4xl font-bold">
+              ${filteredForms.reduce((sum, form) => 
+                sum + parseFloat(form.acquisition_cost || 0), 0
+              ).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-blue-100 text-xs mt-1">
+              {filteredForms.length} responsiva{filteredForms.length !== 1 ? 's' : ''}
+            </p>
           </div>
-        ))}
+          <FileText className="w-16 h-16 text-blue-300 opacity-50" />
+        </div>
+      </div>
+
+      {/* Lista de Responsivas */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Código
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Equipo
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Marca
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  No. Serie
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Costo
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Empleado
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Estado
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredForms.map((form) => (
+                <tr key={form._id || form.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-mono font-medium text-gray-900">
+                      {form.form_code || 'N/A'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {form.equipment_type}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{form.brand}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{form.serial_number}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-semibold text-gray-900">
+                      ${parseFloat(form.acquisition_cost || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">{form.employee_name}</div>
+                    <div className="text-xs text-gray-500">{form.employee_position}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[form.status]}`}>
+                      {statusLabels[form.status]}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleViewPDF(form._id || form.id)}
+                        className="text-blue-600 hover:text-blue-800 transition-colors"
+                        title="Ver PDF"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDownloadPDF(form._id || form.id)}
+                        className="text-green-600 hover:text-green-800 transition-colors"
+                        title="Descargar PDF"
+                      >
+                        <Download className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleEdit(form)}
+                        className="text-yellow-600 hover:text-yellow-800 transition-colors"
+                        title="Editar"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(form._id || form.id)}
+                        className="text-red-600 hover:text-red-800 transition-colors"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {filteredForms.length === 0 && (
-          <div className="text-center py-8 text-gray-500 bg-white rounded-lg shadow-md">
-            No hay responsivas
+          <div className="text-center py-12">
+            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg">No hay responsivas en esta categoría</p>
+            <button
+              onClick={() => setShowModal(true)}
+              className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Crear primera responsiva
+            </button>
           </div>
         )}
       </div>
-      {/* Modal Responsiva */}
+
+      {/* Modal Crear/Editar Responsiva */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <FileText className="w-7 h-7 text-blue-600" />
               {editingId ? 'Editar Responsiva' : 'Nueva Responsiva'}
             </h2>
             <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                {/* Fecha de entrega */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Fecha de Entrega */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Fecha de Entrega *
@@ -379,7 +484,7 @@ export default function ResponsiveForms() {
                   />
                 </div>
 
-                {/* Tipo de equipo */}
+                {/* Tipo de Equipo */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="block text-sm font-medium text-gray-700">
@@ -400,7 +505,7 @@ export default function ResponsiveForms() {
                     onChange={(e) => setFormData({...formData, equipment_type: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Seleccionar equipo...</option>
+                    <option value="">Seleccionar tipo...</option>
                     {equipments.map((equipment) => (
                       <option key={equipment._id} value={equipment.name}>
                         {equipment.name}
@@ -409,38 +514,38 @@ export default function ResponsiveForms() {
                   </select>
                 </div>
 
-                {/* Marca y Serie */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Marca *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.brand}
-                      onChange={(e) => setFormData({...formData, brand: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Ej: DELL INSPIRON15 5510"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Número de Serie *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.serial_number}
-                      onChange={(e) => setFormData({...formData, serial_number: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Ej: B3QYSG3"
-                    />
-                  </div>
+                {/* Marca */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Marca *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.brand}
+                    onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="HP, Dell, Lenovo..."
+                  />
                 </div>
 
-                {/* Costo de adquisición */}
+                {/* Número de Serie */}
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Número de Serie *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.serial_number}
+                    onChange={(e) => setFormData({...formData, serial_number: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="ABC123456789"
+                  />
+                </div>
+
+                {/* Costo de Adquisición */}
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Costo de Adquisición: $ *
                   </label>
@@ -456,7 +561,7 @@ export default function ResponsiveForms() {
                 </div>
 
                 {/* Empleado */}
-                <div>
+                <div className="md:col-span-2">
                   <div className="flex justify-between items-center mb-1">
                     <label className="block text-sm font-medium text-gray-700">
                       Entregar A: *
@@ -487,7 +592,7 @@ export default function ResponsiveForms() {
 
                 {/* Cargo (automático) */}
                 {formData.employee_position && (
-                  <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                  <div className="md:col-span-2 bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Cargo:
                     </label>
@@ -499,7 +604,7 @@ export default function ResponsiveForms() {
 
                 {/* Estado (solo en edición) */}
                 {editingId && (
-                  <div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Estado
                     </label>
@@ -656,4 +761,4 @@ export default function ResponsiveForms() {
       )}
     </div>
   );
-}  
+}

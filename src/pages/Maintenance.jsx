@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Wrench, Plus, Calendar, DollarSign } from 'lucide-react';
+import { Plus, Calendar, Wrench } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../services/api';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function Maintenance() {
   const [maintenances, setMaintenances] = useState([]);
-  const [assets, setAssets] = useState([]);
+  const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
+    idActivo: '',
     tipo: 'Preventivo',
     fechaInicio: '',
     notas: '',
-    costosEstimados: '',
-    idActivo: ''
+    costosEstimados: ''
   });
 
   useEffect(() => {
@@ -22,18 +24,15 @@ export default function Maintenance() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [maintenanceData, assetsData] = await Promise.all([
+      const [maintenanceData, inventoryData] = await Promise.all([
         api.getMaintenance(),
         api.getInventory()
       ]);
-
-      console.log('📦 Activos recibidos:', assetsData);
-
       setMaintenances(maintenanceData);
-      setAssets(assetsData); // ✅ Ya vienen formateados de getInventory
+      setInventory(inventoryData);
     } catch (error) {
       console.error('Error al cargar datos:', error);
-      alert('Error al cargar los mantenimientos');
+      toast.error('Error al cargar mantenimientos');
     } finally {
       setLoading(false);
     }
@@ -43,51 +42,52 @@ export default function Maintenance() {
     e.preventDefault();
     try {
       await api.createMaintenance(formData);
+      toast.success('Mantenimiento programado exitosamente');
       setShowModal(false);
       resetForm();
       loadData();
     } catch (error) {
-      console.error('Error al programar mantenimiento:', error);
-      alert('Error al programar el mantenimiento');
+      console.error('Error al crear mantenimiento:', error);
+      toast.error('Error al programar el mantenimiento');
     }
   };
 
   const handleComplete = async (id) => {
-    if (!confirm('¿Marcar este mantenimiento como completado?')) return;
     try {
       await api.completeMaintenance(id);
+      toast.success('Mantenimiento completado exitosamente');
       loadData();
     } catch (error) {
       console.error('Error al completar mantenimiento:', error);
-      alert('Error al completar el mantenimiento');
+      toast.error('Error al completar el mantenimiento');
     }
   };
 
   const resetForm = () => {
     setFormData({
+      idActivo: '',
       tipo: 'Preventivo',
       fechaInicio: '',
       notas: '',
-      costosEstimados: '',
-      idActivo: ''
+      costosEstimados: ''
     });
   };
 
-  const tipoColors = {
-    'Preventivo': 'bg-blue-100 text-blue-800',
-    'Correctivo': 'bg-orange-100 text-orange-800'
+  const statusColors = {
+    scheduled: 'bg-blue-100 text-blue-800',
+    in_progress: 'bg-yellow-100 text-yellow-800',
+    completed: 'bg-green-100 text-green-800',
+    cancelled: 'bg-red-100 text-red-800'
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-xl">Cargando mantenimientos...</div>
-      </div>
-    );
-  }
+  const statusLabels = {
+    scheduled: 'Programado',
+    in_progress: 'En Progreso',
+    completed: 'Completado',
+    cancelled: 'Cancelado'
+  };
 
-  const pendingMaintenances = maintenances.filter(m => !m.fechaFin);
-  const completedMaintenances = maintenances.filter(m => m.fechaFin);
+  if (loading) return <LoadingSpinner fullScreen message="Cargando mantenimientos..." />;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -96,150 +96,75 @@ export default function Maintenance() {
         <div>
           <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
             <Wrench className="w-8 h-8" />
-            Mantenimientos
+            Gestión de Mantenimientos
           </h1>
-          <p className="text-gray-600 mt-1">Programación y seguimiento</p>
+          <p className="text-gray-600 mt-1">Programación y seguimiento de mantenimientos</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          className="flex items-center gap-2 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors"
         >
           <Plus className="w-5 h-5" />
           Programar Mantenimiento
         </button>
       </div>
 
-      {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Pendientes</p>
-              <p className="text-3xl font-bold text-blue-600">{pendingMaintenances.length}</p>
-            </div>
-            <Calendar className="w-10 h-10 text-blue-600" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Completados</p>
-              <p className="text-3xl font-bold text-green-600">{completedMaintenances.length}</p>
-            </div>
-            <Wrench className="w-10 h-10 text-green-600" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Costo Total</p>
-              <p className="text-3xl font-bold text-purple-600">
-                ${maintenances.reduce((sum, m) => sum + parseFloat(m.costosEstimados || 0), 0).toLocaleString('es-MX')}
-              </p>
-            </div>
-            <DollarSign className="w-10 h-10 text-purple-600" />
-          </div>
-        </div>
-      </div>
-
-      {/* Mantenimientos Pendientes */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Mantenimientos Pendientes</h2>
-        <div className="grid gap-4">
-          {pendingMaintenances.map((maintenance) => {
-            const asset = assets.find(a => a.idActivo === maintenance.idActivo);
-            return (
-              <div key={maintenance.idMantenimiento} className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-sm font-medium text-gray-500">
-                        #{maintenance.idMantenimiento}
-                      </span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${tipoColors[maintenance.tipo]}`}>
-                        {maintenance.tipo}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                      {asset?.nombre || 'Activo no encontrado'}
-                    </h3>
-                    <p className="text-gray-600 mb-3">{maintenance.notas}</p>
-                    <div className="flex items-center gap-6 text-sm text-gray-600">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        Inicio: {new Date(maintenance.fechaInicio).toLocaleDateString('es-MX')}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <DollarSign className="w-4 h-4" />
-                        ${parseFloat(maintenance.costosEstimados).toLocaleString('es-MX')}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleComplete(maintenance.idMantenimiento)}
-                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                  >
-                    Completar
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-          {pendingMaintenances.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No hay mantenimientos pendientes
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Mantenimientos Completados */}
-      <div>
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Historial de Mantenimientos</h2>
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Tabla */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Activo</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Inicio</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Fin</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Costo</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {completedMaintenances.map((maintenance) => {
-                const asset = assets.find(a => a.idActivo === maintenance.idActivo);
-                return (
-                  <tr key={maintenance.idMantenimiento} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm text-gray-900">{maintenance.idMantenimiento}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{asset?.nombre || 'N/A'}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${tipoColors[maintenance.tipo]}`}>
-                        {maintenance.tipo}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {new Date(maintenance.fechaInicio).toLocaleDateString('es-MX')}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {new Date(maintenance.fechaFin).toLocaleDateString('es-MX')}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      ${parseFloat(maintenance.costosEstimados).toLocaleString('es-MX')}
-                    </td>
-                  </tr>
-                );
-              })}
+              {maintenances.map((maintenance) => (
+                <tr key={maintenance.idMantenimiento} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    {maintenance.nombreActivo || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{maintenance.tipo}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {new Date(maintenance.fechaInicio).toLocaleDateString('es-MX')}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {maintenance.fechaFin ? new Date(maintenance.fechaFin).toLocaleDateString('es-MX') : '-'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    ${parseFloat(maintenance.costosEstimados || 0).toLocaleString('es-MX')}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 text-xs rounded-full ${statusColors[maintenance.status]}`}>
+                      {statusLabels[maintenance.status]}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    {maintenance.status === 'scheduled' && (
+                      <button
+                        onClick={() => handleComplete(maintenance.idMantenimiento)}
+                        className="text-green-600 hover:text-green-800 text-sm font-medium"
+                      >
+                        Completar
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
-          {completedMaintenances.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No hay mantenimientos completados
-            </div>
-          )}
         </div>
+        {maintenances.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            No hay mantenimientos programados
+          </div>
+        )}
       </div>
 
       {/* Modal */}
@@ -250,27 +175,21 @@ export default function Maintenance() {
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Activo
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Activo *</label>
                   <select
                     required
                     value={formData.idActivo}
                     onChange={(e) => setFormData({ ...formData, idActivo: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Seleccionar activo...</option>
-                    {assets.map(asset => (
-                      <option key={asset.idActivo} value={asset.idActivo}>
-                        {asset.nombre} - {asset.tipo}
-                      </option>
+                    <option value="">Seleccionar activo</option>
+                    {inventory.map(item => (
+                      <option key={item.id} value={item.id}>{item.nombre}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tipo de Mantenimiento
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
                   <select
                     required
                     value={formData.tipo}
@@ -279,12 +198,11 @@ export default function Maintenance() {
                   >
                     <option value="Preventivo">Preventivo</option>
                     <option value="Correctivo">Correctivo</option>
+                    <option value="Predictivo">Predictivo</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Fecha de Inicio
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Programada *</label>
                   <input
                     type="date"
                     required
@@ -294,26 +212,18 @@ export default function Maintenance() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Notas
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
                   <textarea
-                    required
                     value={formData.notas}
                     onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     rows="3"
-                    placeholder="Descripción del mantenimiento..."
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Costo Estimado
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Costo Estimado</label>
                   <input
                     type="number"
-                    step="0.01"
-                    required
                     value={formData.costosEstimados}
                     onChange={(e) => setFormData({ ...formData, costosEstimados: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -323,7 +233,7 @@ export default function Maintenance() {
               <div className="flex gap-3 mt-6">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+                  className="flex-1 bg-yellow-600 text-white py-2 rounded-lg hover:bg-yellow-700"
                 >
                   Programar
                 </button>

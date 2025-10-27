@@ -1,4 +1,4 @@
-// services/api.js
+// services/api.js - VERSIÓN ACTUALIZADA CON INCIDENCIAS COMPLETAS
 const API_URL = 'http://localhost:5000/api';
 
 // Configuración base para fetch
@@ -49,7 +49,6 @@ export const getProfile = async () => {
 };
 
 // ========== INVENTARIO ==========
-// Obtener lista de inventario con mapeo adecuado
 export const getInventory = async (params = {}) => {
   try {
     const query = new URLSearchParams(params).toString();
@@ -76,15 +75,13 @@ export const getInventory = async (params = {}) => {
       modelo: asset.model
     }));
     
-    console.log('📦 Inventario mapeado:', formattedAssets);
-    
     return formattedAssets;
   } catch (error) {
     console.error('❌ Error en getInventory:', error);
     return [];
   }
 };
-// Obtener un ítem de inventario por ID con mapeo adecuado
+
 export const getInventoryById = async (id) => {
   const response = await request(`/inventory/${id}`);
   const asset = response.asset;
@@ -108,9 +105,8 @@ export const getInventoryById = async (id) => {
     modelo: asset.model
   };
 };
-// Función para crear un nuevo ítem de inventario con mapeo adecuado
+
 export const createInventoryItem = async (item) => {
-  // Mapear el estado correctamente
   const statusMap = {
     'Disponible': 'active',
     'En uso': 'in_use',
@@ -132,22 +128,12 @@ export const createInventoryItem = async (item) => {
     notes: item.descripcion || ''
   };
   
-  console.log('📦 Creando activo - Datos enviados:', backendItem);
-  
-  try {
-    const result = await request('/inventory', {
-      method: 'POST',
-      body: JSON.stringify(backendItem),
-    });
-    console.log('✅ Activo creado exitosamente:', result);
-    return result;
-  } catch (error) {
-    console.error('❌ Error al crear activo:', error);
-    throw error;
-  }
+  return request('/inventory', {
+    method: 'POST',
+    body: JSON.stringify(backendItem),
+  });
 };
 
-// Función para actualizar un ítem de inventario con mapeo adecuado
 export const updateInventoryItem = async (id, item) => {
   const statusMap = {
     'Disponible': 'active',
@@ -169,7 +155,6 @@ export const updateInventoryItem = async (id, item) => {
   });
 };
 
-// Función para eliminar un ítem de inventario
 export const deleteInventoryItem = async (id) => {
   return request(`/inventory/${id}`, {
     method: 'DELETE',
@@ -183,6 +168,11 @@ export const getIncidents = async (params = {}) => {
   return response.incidents || [];
 };
 
+export const getIncidentById = async (id) => {
+  const response = await request(`/incidents/${id}`);
+  return response.incident;
+};
+
 export const createIncident = async (incident) => {
   return request('/incidents', {
     method: 'POST',
@@ -190,14 +180,43 @@ export const createIncident = async (incident) => {
   });
 };
 
+export const updateIncident = async (id, incident) => {
+  return request(`/incidents/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(incident),
+  });
+};
+
+export const assignIncident = async (id, userId) => {
+  return request(`/incidents/${id}/assign`, {
+    method: 'PUT',
+    body: JSON.stringify({ assigned_to: userId }),
+  });
+};
+
+export const resolveIncident = async (id, solution) => {
+  return request(`/incidents/${id}/resolve`, {
+    method: 'PUT',
+    body: JSON.stringify({ solution }),
+  });
+};
+
+export const deleteIncident = async (id) => {
+  return request(`/incidents/${id}`, {
+    method: 'DELETE',
+  });
+};
+
+export const getIncidentStats = async () => {
+  const response = await request('/incidents/stats/overview');
+  return response.stats || {};
+};
 
 // ========== MANTENIMIENTO ==========
-
 export const getMaintenance = async (params = {}) => {
   const query = new URLSearchParams(params).toString();
   const response = await request(`/maintenance${query ? `?${query}` : ''}`);
   
-  // Mapear datos del backend al frontend
   const maintenances = response.maintenances || [];
   return maintenances.map(m => ({
     idMantenimiento: m._id,
@@ -230,29 +249,20 @@ export const createMaintenance = async (maintenance) => {
   };
 
   const backendMaintenance = {
-    asset_id: maintenance.idActivo, // ✅ ID del activo
-    type: typeMap[maintenance.tipo] || 'preventive', // ✅ Usar 'type' no 'maintenance_type'
-    title: maintenance.notas || 'Mantenimiento programado', // ✅ CAMPO REQUERIDO
-    description: maintenance.notas || '', // Descripción adicional
-    scheduled_date: maintenance.fechaInicio, // ✅ Fecha en formato ISO
-    cost: parseFloat(maintenance.costosEstimados) || 0, // ✅ Usar 'cost' no 'estimated_cost'
+    asset_id: maintenance.idActivo,
+    type: typeMap[maintenance.tipo] || 'preventive',
+    title: maintenance.notas || 'Mantenimiento programado',
+    description: maintenance.notas || '',
+    scheduled_date: maintenance.fechaInicio,
+    cost: parseFloat(maintenance.costosEstimados) || 0,
     notes: maintenance.notas || '',
     status: 'scheduled'
   };
   
-  console.log('🔧 Enviando al backend:', backendMaintenance);
-  
-  try {
-    const result = await request('/maintenance', {
-      method: 'POST',
-      body: JSON.stringify(backendMaintenance),
-    });
-    console.log('✅ Respuesta exitosa:', result);
-    return result;
-  } catch (error) {
-    console.error('❌ Error al crear mantenimiento:', error);
-    throw error;
-  }
+  return request('/maintenance', {
+    method: 'POST',
+    body: JSON.stringify(backendMaintenance),
+  });
 };
 
 export const completeMaintenance = async (id) => {
@@ -267,12 +277,10 @@ export const completeMaintenance = async (id) => {
 
 // ========== FORMATOS RESPONSIVOS ==========
 export const getResponsiveForms = async () => {
-  console.log('📋 Obteniendo formatos responsivos...');
   return request('/responsive-forms');
 };
 
 export const createResponsiveForm = async (data) => {
-  console.log('➕ Creando formato responsivo:', data);
   return request('/responsive-forms', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -280,7 +288,6 @@ export const createResponsiveForm = async (data) => {
 };
 
 export const updateResponsiveForm = async (id, data) => {
-  console.log('✏️ Actualizando formato responsivo:', id, data);
   return request(`/responsive-forms/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
@@ -288,25 +295,20 @@ export const updateResponsiveForm = async (id, data) => {
 };
 
 export const deleteResponsiveForm = async (id) => {
-  console.log('🗑️ Eliminando formato responsivo:', id);
   return request(`/responsive-forms/${id}`, {
     method: 'DELETE',
   });
 };
 
 export const downloadResponsiveFormPDF = async (id) => {
-  console.log('📄 Descargando PDF de formato responsivo:', id);
   return request(`/responsive-forms/${id}`);
 };
 
-// Catálogos
 export const getEquipments = async () => {
-  console.log('🖥️ Obteniendo catálogo de equipos...');
   return request('/responsive-forms/catalog/equipments');
 };
 
 export const createEquipment = async (data) => {
-  console.log('➕ Agregando equipo:', data);
   return request('/responsive-forms/catalog/equipments', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -314,12 +316,10 @@ export const createEquipment = async (data) => {
 };
 
 export const getEmployees = async () => {
-  console.log('👥 Obteniendo catálogo de empleados...');
   return request('/responsive-forms/catalog/employees');
 };
 
 export const createEmployee = async (data) => {
-  console.log('➕ Agregando empleado:', data);
   return request('/responsive-forms/catalog/employees', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -327,23 +327,17 @@ export const createEmployee = async (data) => {
 };
 
 // ========== REQUISICIONES ==========
-// Obtener lista de requisiciones con mapeo adecuado
 export const getRequisitions = async (params = {}) => {
   try {
     const query = new URLSearchParams(params).toString();
     const response = await request(`/requisitions${query ? `?${query}` : ''}`);
-    
-    const requisitions = response.requisitions || [];
-    
-    console.log('📋 Requisiciones recibidas:', requisitions);
-    
-    return requisitions;
+    return response.requisitions || [];
   } catch (error) {
     console.error('❌ Error al obtener requisiciones:', error);
     return [];
   }
 };
-// Función para crear una nueva requisición con mapeo adecuado
+
 export const createRequisition = async (requisition) => {
   const backendRequisition = {
     request_type: requisition.request_type,
@@ -353,35 +347,20 @@ export const createRequisition = async (requisition) => {
     concept: requisition.concept
   };
   
-  console.log('📝 Enviando requisición:', backendRequisition);
-  
-  try {
-    const result = await request('/requisitions', {
-      method: 'POST',
-      body: JSON.stringify(backendRequisition),
-    });
-    console.log('✅ Requisición creada:', result);
-    return result;
-  } catch (error) {
-    console.error('❌ Error completo:', error);
-    throw error;
-  }
+  return request('/requisitions', {
+    method: 'POST',
+    body: JSON.stringify(backendRequisition),
+  });
 };
 
-// Función para actualizar una requisición existente
 export const updateRequisition = async (id, data) => {
-  console.log('✏️ Actualizando requisición:', id, data);
-  
   return request(`/requisitions/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
 };
 
-// Función para actualizar el estado de una requisición (aprobar/rechazar)
 export const updateRequisitionStatus = async (id, approved) => {
-  console.log(`${approved ? '✅' : '❌'} Actualizando estado:`, { id, approved });
-  
   return request(`/requisitions/${id}/approve`, {
     method: 'PUT',
     body: JSON.stringify({ 
@@ -390,24 +369,23 @@ export const updateRequisitionStatus = async (id, approved) => {
     }),
   });
 };
-// Función para "descargar" (mostrar) la requisición en formato PDF
+
 export const downloadRequisitionPDF = async (id) => {
   try {
     const response = await request(`/requisitions/${id}/pdf`);
-    console.log('📄 Datos para PDF:', response);
-    return response.requisition; // Devolver la requisición completa
+    return response.requisition;
   } catch (error) {
     console.error('❌ Error al obtener datos del PDF:', error);
     throw error;
   }
 };
-// Función para eliminar una requisición
+
 export const deleteRequisition = async (id) => {
-  console.log('🗑️ Eliminando requisición:', id);
   return request(`/requisitions/${id}`, {
     method: 'DELETE',
   });
 };
+
 // ========== CLIENTES ==========
 export const getClients = async () => {
   try {
@@ -420,14 +398,11 @@ export const getClients = async () => {
 };
 
 export const createClient = async (clientData) => {
-  console.log('👤 Creando cliente:', clientData);
-  
   return request('/clients', {
     method: 'POST',
     body: JSON.stringify(clientData),
   });
 };
-
 
 // ========== REPORTES ==========
 export const getReports = async () => {
@@ -435,7 +410,7 @@ export const getReports = async () => {
   return response.dashboard || {};
 };
 
-// ========== USUARIOS ========== ← AQUÍ ESTÁ LA CORRECCIÓN
+// ========== USUARIOS ==========
 export const getUsers = async () => {
   const response = await request('/auth/users');
   return response.users || [];
@@ -455,7 +430,7 @@ export const updateUser = async (id, userData) => {
   });
 };
 
-// Export default
+// Export default con todas las funciones
 const api = {
   // Auth
   login,
@@ -469,7 +444,13 @@ const api = {
   deleteInventoryItem,
   // Incidents
   getIncidents,
+  getIncidentById,
   createIncident,
+  updateIncident,
+  assignIncident,
+  resolveIncident,
+  deleteIncident,
+  getIncidentStats,
   // Maintenance
   getMaintenance,
   createMaintenance,
@@ -485,7 +466,7 @@ const api = {
   getEmployees,
   createEmployee,
   // Clients
-   getClients,
+  getClients,
   createClient,
   // Requisitions
   getRequisitions,
@@ -499,7 +480,9 @@ const api = {
   // Users
   getUsers,
   createUser,
-  updateUser
+  updateUser,
+  // Request directo
+  request
 };
 
 export default api;
