@@ -1,5 +1,6 @@
+// src/pages/Requisitions.jsx
 import { useState, useEffect } from 'react';
-import { Plus, FileText, ShoppingCart, Download, Check, X } from 'lucide-react';
+import { Plus, FileText, ShoppingCart, Download, Check, X, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -10,7 +11,7 @@ export default function Requisitions() {
   const [showModal, setShowModal] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [formData, setFormData] = useState({
-    request_type: 'pago',
+    request_type: 'transferencia',
     amount: '',
     currency: 'MXN',
     payable_to: '',
@@ -36,15 +37,37 @@ export default function Requisitions() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    const amountNumber = parseFloat(formData.amount);
+    
+    if (isNaN(amountNumber) || amountNumber <= 0) {
+      toast.error('El monto debe ser un número válido mayor a 0');
+      return;
+    }
+    
     try {
-      await api.createRequisition(formData);
+      const dataToSend = {
+        request_type: formData.request_type,
+        amount: amountNumber,
+        currency: formData.currency,
+        payable_to: formData.payable_to.trim(),
+        concept: formData.concept.trim(),
+        status: 'pending'
+      };
+      
+      console.log('📤 Enviando:', dataToSend);
+      
+      const response = await api.createRequisition(dataToSend);
+      console.log('✅ Respuesta:', response);
+      
       toast.success('Requisición creada exitosamente');
       setShowModal(false);
       resetForm();
       loadRequisitions();
     } catch (error) {
-      console.error('Error al crear requisición:', error);
-      toast.error('Error al crear la requisición');
+      console.error('❌ Error completo:', error);
+      console.error('❌ Error response:', error.response?.data);
+      toast.error(error.response?.data?.message || 'Error al crear la requisición');
     }
   };
 
@@ -79,10 +102,23 @@ export default function Requisitions() {
       toast.error('Error al generar el PDF');
     }
   };
+  
+  const handleDelete = async (id) => {
+    if (confirm('¿Estás seguro de eliminar esta requisición?')) {
+      try {
+        await api.deleteRequisition(id);
+        toast.success('Requisición eliminada exitosamente');
+        loadRequisitions();
+      } catch (error) {
+        console.error('Error al eliminar:', error);
+        toast.error('Error al eliminar la requisición');
+      }
+    }
+  };
 
   const resetForm = () => {
     setFormData({
-      request_type: 'pago',
+      request_type: 'transferencia',
       amount: '',
       currency: 'MXN',
       payable_to: '',
@@ -140,8 +176,9 @@ export default function Requisitions() {
         <div className="flex border-b">
           <button
             onClick={() => setActiveTab('all')}
-            className={`px-6 py-3 font-medium ${activeTab === 'all' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-800'
-              }`}
+            className={`px-6 py-3 font-medium ${
+              activeTab === 'all' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-800'
+            }`}
           >
             Todas
             <span className="ml-2 px-2 py-1 text-xs rounded-full bg-gray-200">
@@ -150,8 +187,9 @@ export default function Requisitions() {
           </button>
           <button
             onClick={() => setActiveTab('pending')}
-            className={`px-6 py-3 font-medium ${activeTab === 'pending' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-800'
-              }`}
+            className={`px-6 py-3 font-medium ${
+              activeTab === 'pending' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-800'
+            }`}
           >
             Pendientes
             <span className="ml-2 px-2 py-1 text-xs rounded-full bg-yellow-200">
@@ -160,8 +198,9 @@ export default function Requisitions() {
           </button>
           <button
             onClick={() => setActiveTab('approved')}
-            className={`px-6 py-3 font-medium ${activeTab === 'approved' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-800'
-              }`}
+            className={`px-6 py-3 font-medium ${
+              activeTab === 'approved' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-800'
+            }`}
           >
             Aprobadas
             <span className="ml-2 px-2 py-1 text-xs rounded-full bg-green-200">
@@ -170,8 +209,9 @@ export default function Requisitions() {
           </button>
           <button
             onClick={() => setActiveTab('rejected')}
-            className={`px-6 py-3 font-medium ${activeTab === 'rejected' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-800'
-              }`}
+            className={`px-6 py-3 font-medium ${
+              activeTab === 'rejected' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600 hover:text-gray-800'
+            }`}
           >
             Rechazadas
             <span className="ml-2 px-2 py-1 text-xs rounded-full bg-red-200">
@@ -266,6 +306,13 @@ export default function Requisitions() {
                       >
                         <Download className="w-5 h-5" />
                       </button>
+                      <button
+                        onClick={() => handleDelete(req._id)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -295,9 +342,10 @@ export default function Requisitions() {
                     onChange={(e) => setFormData({ ...formData, request_type: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="pago">Pago</option>
-                    <option value="compra">Compra</option>
                     <option value="transferencia">Transferencia</option>
+                    <option value="pago_tarjeta">Pago con Tarjeta</option>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="pago_linea">Pago en Línea</option>
                   </select>
                 </div>
                 <div>

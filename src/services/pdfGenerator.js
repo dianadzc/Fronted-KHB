@@ -1,3 +1,4 @@
+// src/services/pdfGenerator.js
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
