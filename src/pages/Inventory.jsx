@@ -1,6 +1,6 @@
 // src/pages/Inventory.jsx
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, Package } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, Search, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -18,7 +18,7 @@ export default function Inventory() {
     estado: 'Disponible',
     valorEstimado: '',
     marca: '',
-    modelo: ''
+    modnumeroSerie: ''
   });
 
   useEffect(() => {
@@ -29,7 +29,9 @@ export default function Inventory() {
     try {
       setLoading(true);
       const data = await api.getInventory();
-      setInventory(data);
+      // ⭐ Filtrar solo activos que NO estén inactivos
+      const activeAssets = data.filter(item => item.status !== 'inactive');
+      setInventory(activeAssets);
     } catch (error) {
       console.error('Error al cargar inventario:', error);
       toast.error('Error al cargar el inventario');
@@ -97,6 +99,14 @@ export default function Inventory() {
     setEditingItem(null);
   };
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   const filteredInventory = inventory.filter(item =>
     item.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -147,7 +157,7 @@ export default function Inventory() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Marca</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Modelo</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">No. Serie</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
@@ -162,14 +172,13 @@ export default function Inventory() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">{item.tipo}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{item.marca || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{item.modelo || '-'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{item.numeroSerie || '-'}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      item.estado === 'Disponible' ? 'bg-green-100 text-green-800' :
+                    <span className={`px-2 py-1 text-xs rounded-full ${item.estado === 'Disponible' ? 'bg-green-100 text-green-800' :
                       item.estado === 'En uso' ? 'bg-blue-100 text-blue-800' :
-                      item.estado === 'En mantenimiento' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                        item.estado === 'En mantenimiento' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                      }`}>
                       {item.estado}
                     </span>
                   </td>
@@ -205,90 +214,126 @@ export default function Inventory() {
       </div>
 
       {/* Modal */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold mb-6">
-              {editingItem ? 'Editar Activo' : 'Nuevo Activo'}
-            </h2>
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({...formData, nombre: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                  <textarea
-                    value={formData.descripcion}
-                    onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows="3"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-                  <input
-                    type="text"
-                    value={formData.tipo}
-                    onChange={(e) => setFormData({...formData, tipo: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
-                  <select
-                    required
-                    value={formData.estado}
-                    onChange={(e) => setFormData({...formData, estado: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Disponible">Disponible</option>
-                    <option value="En uso">En uso</option>
-                    <option value="En mantenimiento">En mantenimiento</option>
-                    <option value="Dado de baja">Dado de baja</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Valor Estimado</label>
-                  <input
-                    type="number"
-                    value={formData.valorEstimado}
-                    onChange={(e) => setFormData({...formData, valorEstimado: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
-                  <input
-                    type="text"
-                    value={formData.marca}
-                    onChange={(e) => setFormData({...formData, marca: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
-                  <input
-                    type="text"
-                    value={formData.modelo}
-                    onChange={(e) => setFormData({...formData, modelo: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-gray-800">
+                {editingItem ? 'Editar Activo' : 'Nuevo Activo'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  resetForm();
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nombre *</label>
+                <input
+                  type="text"
+                  name="nombre"
+                  value={formData.nombre}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
               </div>
-              <div className="flex gap-3 mt-6">
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+                <textarea
+                  name="descripcion"
+                  value={formData.descripcion}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows="3"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+                <select
+                  name="Tipo"
+                  value={formData.tipo}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="Equipo de Cómputo">Equipo de Cómputo</option>
+                  <option value="Periférico">Periférico</option>
+                  <option value="Red">Accesorio</option>
+                  <option value="Servidor">Dado de baja</option>
+                  <option value="Equipo de Oficina">Equipo de Oficina</option>
+                  <option value="Red">Red</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Estado *</label>
+                <select
+                  name="estado"
+                  value={formData.estado}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="Disponible">Disponible</option>
+                  <option value="En uso">En uso</option>
+                  <option value="En mantenimiento">En mantenimiento</option>
+                  <option value="Dado de baja">Dado de baja</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Valor Estimado</label>
+                <input
+                  type="number"
+                  name="valorEstimado"
+                  value={formData.valorEstimado}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  step="0.01"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Marca</label>
+                <input
+                  type="text"
+                  name="marca"
+                  value={formData.marca}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Número de Serie</label>
+                <input
+                  type="text"
+                  name="numeroSerie"
+                  value={formData.numeroSerie}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="Número de serie del activo"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+                  disabled={loading}
+                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 transition-colors"
                 >
-                  {editingItem ? 'Actualizar' : 'Crear'}
+                  {loading ? 'Guardando...' : (editingItem ? 'Actualizar Activo' : 'Crear Activo')}
                 </button>
                 <button
                   type="button"
@@ -296,7 +341,7 @@ export default function Inventory() {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300"
+                  className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 font-medium transition-colors"
                 >
                   Cancelar
                 </button>

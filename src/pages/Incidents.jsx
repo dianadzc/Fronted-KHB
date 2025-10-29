@@ -1,12 +1,13 @@
+// src/pages/Incidents.jsx
 import { useState, useEffect } from 'react';
-import { Plus, Eye, Filter, AlertCircle } from 'lucide-react';
+import { Plus, Eye, Filter, AlertCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AssetSelector from '../components/AssetSelector';
 
 export default function Incidents() {
   const [incidents, setIncidents] = useState([]);
-  const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [filters, setFilters] = useState({
@@ -27,12 +28,8 @@ export default function Incidents() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [incidentsData, inventoryData] = await Promise.all([
-        api.getIncidents(filters),
-        api.getInventory()
-      ]);
+      const incidentsData = await api.getIncidents(filters);
       setIncidents(incidentsData);
-      setInventory(inventoryData);
     } catch (error) {
       console.error('Error al cargar datos:', error);
       toast.error('Error al cargar incidencias');
@@ -217,63 +214,84 @@ export default function Incidents() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold mb-6">Nueva Incidencia</h2>
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Título *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descripción *</label>
-                  <textarea
-                    required
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows="3"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Activo</label>
-                  <select
-                    value={formData.asset_id}
-                    onChange={(e) => setFormData({...formData, asset_id: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Sin activo asociado</option>
-                    {inventory.map(item => (
-                      <option key={item.id} value={item.id}>{item.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Prioridad *</label>
-                  <select
-                    required
-                    value={formData.priority}
-                    onChange={(e) => setFormData({...formData, priority: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="low">Baja</option>
-                    <option value="medium">Media</option>
-                    <option value="high">Alta</option>
-                    <option value="critical">Crítica</option>
-                  </select>
-                </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-600 to-red-700 px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-white">Nueva Incidencia</h3>
+              <button 
+                onClick={() => {
+                  setShowModal(false);
+                  resetForm();
+                }} 
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Título <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                  placeholder="Título de la incidencia"
+                />
               </div>
-              <div className="flex gap-3 mt-6">
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Descripción <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  required
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all resize-none"
+                  rows="3"
+                  placeholder="Descripción detallada del problema"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Activo Asociado
+                </label>
+                <AssetSelector
+                  value={formData.asset_id}
+                  onChange={(assetId) => setFormData({...formData, asset_id: assetId})}
+                  required={false}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Prioridad <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.priority}
+                  onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all bg-white"
+                >
+                  <option value="low">Baja</option>
+                  <option value="medium">Media</option>
+                  <option value="high">Alta</option>
+                  <option value="critical">Crítica</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700"
+                  className="flex-1 bg-red-600 text-white py-2.5 rounded-lg hover:bg-red-700 font-semibold transition-colors"
                 >
                   Crear Incidencia
                 </button>
@@ -283,7 +301,7 @@ export default function Incidents() {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300"
+                  className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
                 >
                   Cancelar
                 </button>
