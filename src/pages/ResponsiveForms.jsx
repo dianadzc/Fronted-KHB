@@ -1,22 +1,24 @@
-// src/pages/ResponsiveForms.jsx - VERSIÓN ACTUALIZADA CON TOAST
+// src/pages/ResponsiveForms.jsx - CON SELECTOR DE ACTIVOS
 import { useState, useEffect } from 'react';
-import { FileText, Plus, Download, Eye, Edit, Trash2, UserPlus, Laptop } from 'lucide-react';
-import toast from 'react-hot-toast'; // ← IMPORTACIÓN AGREGADA
+import { FileText, Plus, Download, Eye, Edit, Trash2, UserPlus } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { generateResponsiveFormPDF, previewResponsiveFormPDF } from '../services/responsivePDFGenerator';
 import api from '../services/api';
+import AssetSelector from '../components/AssetSelector';
 
 export default function ResponsiveForms() {
   const [forms, setForms] = useState([]);
-  const [equipments, setEquipments] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [showEquipmentModal, setShowEquipmentModal] = useState(false);
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState('Todas');
   const [editingId, setEditingId] = useState(null);
+  const [selectedAssetId, setSelectedAssetId] = useState(null);
   
   const [formData, setFormData] = useState({
+    asset_id: '',
+    nombre_activo: '',
     equipment_type: '',
     brand: '',
     serial_number: '',
@@ -27,7 +29,6 @@ export default function ResponsiveForms() {
     status: 'active'
   });
   
-  const [newEquipment, setNewEquipment] = useState({ name: '' });
   const [newEmployee, setNewEmployee] = useState({ 
     full_name: '', 
     position: '', 
@@ -38,22 +39,45 @@ export default function ResponsiveForms() {
     loadData();
   }, []);
 
+  // ⭐ Cargar info del activo seleccionado
+  useEffect(() => {
+    if (selectedAssetId) {
+      loadAssetDetails(selectedAssetId);
+    }
+  }, [selectedAssetId]);
+
   const loadData = async () => {
     try {
       setLoading(true);
-      const [formsData, equipmentsData, employeesData] = await Promise.all([
+      const [formsData, employeesData] = await Promise.all([
         api.getResponsiveForms(),
-        api.getEquipments(),
         api.getEmployees()
       ]);
       setForms(formsData);
-      setEquipments(equipmentsData);
       setEmployees(employeesData);
     } catch (error) {
       console.error('Error al cargar datos:', error);
-      toast.error('Error al cargar los datos'); // ← CAMBIADO A TOAST
+      toast.error('Error al cargar los datos');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ⭐ Cargar detalles del activo seleccionado
+  const loadAssetDetails = async (assetId) => {
+    try {
+      const asset = await api.getInventoryById(assetId);
+      setFormData(prev => ({
+        ...prev,
+        asset_id: assetId,
+        equipment_type: asset.tipo || asset.nombre,
+        brand: asset.marca || '',
+        serial_number: asset.asset_code || '',
+        acquisition_cost: asset.valorEstimado || asset.purchase_price || ''
+      }));
+    } catch (error) {
+      console.error('Error al cargar detalles del activo:', error);
+      toast.error('Error al cargar información del activo');
     }
   };
 
@@ -62,32 +86,17 @@ export default function ResponsiveForms() {
     try {
       if (editingId) {
         await api.updateResponsiveForm(editingId, formData);
-        toast.success('Responsiva actualizada exitosamente'); // ← CAMBIADO A TOAST
+        toast.success('Responsiva actualizada exitosamente');
       } else {
         await api.createResponsiveForm(formData);
-        toast.success('Responsiva creada exitosamente'); // ← CAMBIADO A TOAST
+        toast.success('Responsiva creada exitosamente');
       }
       setShowModal(false);
       resetForm();
       loadData();
     } catch (error) {
       console.error('Error:', error);
-      toast.error(error.message || 'Error al procesar la responsiva'); // ← CAMBIADO A TOAST
-    }
-  };
-
-  const handleCreateEquipment = async (e) => {
-    e.preventDefault();
-    try {
-      const result = await api.createEquipment(newEquipment);
-      setEquipments([...equipments, result.equipment]);
-      setFormData({...formData, equipment_type: result.equipment.name});
-      setShowEquipmentModal(false);
-      setNewEquipment({ name: '' });
-      toast.success('Equipo agregado exitosamente'); // ← CAMBIADO A TOAST
-    } catch (error) {
-      console.error('Error al crear equipo:', error);
-      toast.error(error.message || 'Error al crear el equipo'); // ← CAMBIADO A TOAST
+      toast.error(error.message || 'Error al procesar la responsiva');
     }
   };
 
@@ -103,10 +112,10 @@ export default function ResponsiveForms() {
       });
       setShowEmployeeModal(false);
       setNewEmployee({ full_name: '', position: '', department: '' });
-      toast.success('Empleado agregado exitosamente'); // ← CAMBIADO A TOAST
+      toast.success('Empleado agregado exitosamente');
     } catch (error) {
       console.error('Error al crear empleado:', error);
-      toast.error(error.message || 'Error al crear el empleado'); // ← CAMBIADO A TOAST
+      toast.error(error.message || 'Error al crear el empleado');
     }
   };
 
@@ -114,10 +123,10 @@ export default function ResponsiveForms() {
     try {
       const form = await api.downloadResponsiveFormPDF(id);
       await generateResponsiveFormPDF(form);
-      toast.success('PDF descargado exitosamente'); // ← AGREGADO TOAST DE ÉXITO
+      toast.success('PDF descargado exitosamente');
     } catch (error) {
       console.error('Error al descargar PDF:', error);
-      toast.error('Error al descargar el PDF'); // ← CAMBIADO A TOAST
+      toast.error('Error al descargar el PDF');
     }
   };
 
@@ -127,7 +136,7 @@ export default function ResponsiveForms() {
       await previewResponsiveFormPDF(form);
     } catch (error) {
       console.error('Error al visualizar PDF:', error);
-      toast.error('Error al visualizar el PDF'); // ← CAMBIADO A TOAST
+      toast.error('Error al visualizar el PDF');
     }
   };
 
@@ -140,6 +149,7 @@ export default function ResponsiveForms() {
     }
     
     setFormData({
+      asset_id: form.asset_id || '',
       equipment_type: form.equipment_type,
       brand: form.brand,
       serial_number: form.serial_number,
@@ -149,45 +159,49 @@ export default function ResponsiveForms() {
       employee_position: form.employee_position,
       status: form.status
     });
+    
+    if (form.asset_id) {
+      setSelectedAssetId(form.asset_id);
+    }
+    
     setShowModal(true);
   };
 
   const handleDelete = async (id) => {
-  // Mostrar toast de confirmación personalizado
-  toast((t) => (
-    <div className="flex flex-col gap-3 ">
-      <p className="font-semibold text-gray-200">¿Estás seguro?</p>
-      <p className="text-sm text-gray-200">Esta acción no se puede deshacer.</p>
-      <div className="flex gap-2">
-        <button
-          onClick={async () => {
-            toast.dismiss(t.id);
-            try {
-              await api.deleteResponsiveForm(id);
-              toast.success('Responsiva eliminada exitosamente');
-              loadData();
-            } catch (error) {
-              console.error('Error al eliminar responsiva:', error);
-              toast.error(error.message || 'Error al eliminar la responsiva');
-            }
-          }}
-          className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium"
-        >
-          Eliminar
-        </button>
-        <button
-          onClick={() => toast.dismiss(t.id)}
-          className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium"
-        >
-          Cancelar
-        </button>
+    toast((t) => (
+      <div className="flex flex-col gap-3">
+        <p className="font-semibold text-gray-200">¿Estás seguro?</p>
+        <p className="text-sm text-gray-200">Esta acción no se puede deshacer.</p>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              toast.dismiss(t.id);
+              try {
+                await api.deleteResponsiveForm(id);
+                toast.success('Responsiva eliminada exitosamente');
+                loadData();
+              } catch (error) {
+                console.error('Error al eliminar responsiva:', error);
+                toast.error(error.message || 'Error al eliminar la responsiva');
+              }
+            }}
+            className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium"
+          >
+            Eliminar
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium"
+          >
+            Cancelar
+          </button>
+        </div>
       </div>
-    </div>
-  ), {
-    duration: Infinity, // No se cierra automáticamente
-    position: 'top-center',
-  });
-};
+    ), {
+      duration: Infinity,
+      position: 'top-center',
+    });
+  };
 
   const handleEmployeeSelect = (e) => {
     const selectedEmployee = employees.find(emp => emp.full_name === e.target.value);
@@ -202,7 +216,9 @@ export default function ResponsiveForms() {
 
   const resetForm = () => {
     setEditingId(null);
+    setSelectedAssetId(null);
     setFormData({
+      asset_id: '',
       equipment_type: '',
       brand: '',
       serial_number: '',
@@ -463,170 +479,147 @@ export default function ResponsiveForms() {
       {/* Modal Crear/Editar Responsiva */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <FileText className="w-7 h-7 text-blue-600" />
-              {editingId ? 'Editar Responsiva' : 'Nueva Responsiva'}
-            </h2>
-            <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Fecha de Entrega */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Fecha de Entrega *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.delivery_date}
-                    onChange={(e) => setFormData({...formData, delivery_date: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <FileText className="w-6 h-6" />
+                {editingId ? 'Editar Responsiva' : 'Nueva Responsiva'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  resetForm();
+                }}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
 
-                {/* Tipo de Equipo */}
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Tipo de Equipo *
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowEquipmentModal(true)}
-                      className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
-                    >
-                      <Laptop className="w-4 h-4" />
-                      Agregar equipo
-                    </button>
-                  </div>
-                  <select
-                    required
-                    value={formData.equipment_type}
-                    onChange={(e) => setFormData({...formData, equipment_type: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Seleccionar tipo...</option>
-                    {equipments.map((equipment) => (
-                      <option key={equipment._id} value={equipment.name}>
-                        {equipment.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Marca */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Marca *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.brand}
-                    onChange={(e) => setFormData({...formData, brand: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="HP, Dell, Lenovo..."
-                  />
-                </div>
-
-                {/* Número de Serie */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Número de Serie *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.serial_number}
-                    onChange={(e) => setFormData({...formData, serial_number: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="ABC123456789"
-                  />
-                </div>
-
-                {/* Costo de Adquisición */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Costo de Adquisición: $ *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={formData.acquisition_cost}
-                    onChange={(e) => setFormData({...formData, acquisition_cost: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.00"
-                  />
-                </div>
-
-                {/* Empleado */}
-                <div className="md:col-span-2">
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Entregar A: *
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowEmployeeModal(true)}
-                      className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      Agregar empleado
-                    </button>
-                  </div>
-                  <select
-                    required
-                    value={formData.employee_name}
-                    onChange={handleEmployeeSelect}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Seleccionar empleado...</option>
-                    {employees.map((employee) => (
-                      <option key={employee._id} value={employee.full_name}>
-                        {employee.full_name} - {employee.position}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Cargo (automático) */}
-                {formData.employee_position && (
-                  <div className="md:col-span-2 bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Cargo:
-                    </label>
-                    <p className="text-lg font-bold text-blue-800">
-                      {formData.employee_position}
-                    </p>
-                  </div>
-                )}
-
-                {/* Estado (solo en edición) */}
-                {editingId && (
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Estado
-                    </label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({...formData, status: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="active">Activa</option>
-                      <option value="returned">Devuelta</option>
-                      <option value="damaged">Dañada</option>
-                    </select>
-                  </div>
-                )}
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+              {/* ⭐ SELECTOR DE ACTIVO */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Seleccionar Activo <span className="text-red-500">*</span>
+                </label>
+                <AssetSelector
+                  value={selectedAssetId}
+                  onChange={setSelectedAssetId}
+                  required={true}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Busca y selecciona un activo del inventario
+                </p>
               </div>
 
-              <div className="flex gap-3 mt-6">
+              {/* Info auto-llenada (solo lectura) */}
+              {formData.equipment_type && (
+                <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                  <div> 
+                    <label className="block text-xs font-medium text-gray-600">Nombre</label>
+                    <p className="text-sm font-semibold text-gray-900">{formData.nombre_activo}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600">Marca</label>
+                    <p className="text-sm font-semibold text-gray-900">{formData.brand || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600">Serie/Código</label>
+                    <p className="text-sm font-semibold text-gray-900">{formData.serial_number || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600">Costo</label>
+                    <p className="text-sm font-semibold text-gray-900">
+                      ${parseFloat(formData.acquisition_cost || 0).toLocaleString('es-MX')}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Fecha de Entrega */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Fecha de Entrega <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={formData.delivery_date}
+                  onChange={(e) => setFormData({...formData, delivery_date: e.target.value})}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              {/* Empleado */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Entregar A <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmployeeModal(true)}
+                    className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1 font-medium"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Agregar empleado
+                  </button>
+                </div>
+                <select
+                  required
+                  value={formData.employee_name}
+                  onChange={handleEmployeeSelect}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                >
+                  <option value="">Seleccionar empleado...</option>
+                  {employees.map((employee) => (
+                    <option key={employee._id} value={employee.full_name}>
+                      {employee.full_name} - {employee.position}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Cargo (automático) */}
+              {formData.employee_position && (
+                <div className="p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Cargo:
+                  </label>
+                  <p className="text-lg font-bold text-green-800">
+                    {formData.employee_position}
+                  </p>
+                </div>
+              )}
+
+              {/* Estado (solo en edición) */}
+              {editingId && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Estado
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                  >
+                    <option value="active">Activa</option>
+                    <option value="returned">Devuelta</option>
+                    <option value="damaged">Dañada</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Botones */}
+              <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-semibold"
+                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 font-semibold transition-colors"
                 >
-                  {editingId ? 'Actualizar' : 'Crear Responsiva'}
+                  {editingId ? 'Actualizar Responsiva' : 'Crear Responsiva'}
                 </button>
                 <button
                   type="button"
@@ -634,53 +627,7 @@ export default function ResponsiveForms() {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 font-semibold"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Agregar Equipo */}
-      {showEquipmentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full">
-            <h2 className="text-2xl font-bold mb-6">Agregar Nuevo Equipo</h2>
-            <form onSubmit={handleCreateEquipment}>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tipo de Equipo *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newEquipment.name}
-                  onChange={(e) => setNewEquipment({name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ej: LAPTOP"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Este equipo estará disponible para futuras responsivas
-                </p>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-semibold flex items-center justify-center gap-2"
-                >
-                  <Laptop className="w-5 h-5" />
-                  Agregar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEquipmentModal(false);
-                    setNewEquipment({ name: '' });
-                  }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 font-semibold"
+                  className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
                 >
                   Cancelar
                 </button>
@@ -693,56 +640,70 @@ export default function ResponsiveForms() {
       {/* Modal Agregar Empleado */}
       {showEmployeeModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full">
-            <h2 className="text-2xl font-bold mb-6">Agregar Nuevo Empleado</h2>
-            <form onSubmit={handleCreateEmployee}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nombre Completo *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newEmployee.full_name}
-                    onChange={(e) => setNewEmployee({...newEmployee, full_name: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ej: ELIZABETH RODRÍGUEZ MEDINA"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cargo / Puesto *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newEmployee.position}
-                    onChange={(e) => setNewEmployee({...newEmployee, position: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ej: GERENTE DE VENTAS"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Departamento (Opcional)
-                  </label>
-                  <input
-                    type="text"
-                    value={newEmployee.department}
-                    onChange={(e) => setNewEmployee({...newEmployee, department: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ej: Ventas"
-                  />
-                </div>
+          <div className="bg-white rounded-xl w-full max-w-md shadow-2xl">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <UserPlus className="w-6 h-6" />
+                Agregar Nuevo Empleado
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEmployeeModal(false);
+                  setNewEmployee({ full_name: '', position: '', department: '' });
+                }}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleCreateEmployee} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Nombre Completo <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newEmployee.full_name}
+                  onChange={(e) => setNewEmployee({...newEmployee, full_name: e.target.value})}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                  placeholder="Ej: ELIZABETH RODRÍGUEZ MEDINA"
+                />
               </div>
-              <div className="flex gap-3 mt-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Cargo / Puesto <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newEmployee.position}
+                  onChange={(e) => setNewEmployee({...newEmployee, position: e.target.value})}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                  placeholder="Ej: GERENTE DE VENTAS"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Departamento (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={newEmployee.department}
+                  onChange={(e) => setNewEmployee({...newEmployee, department: e.target.value})}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                  placeholder="Ej: Ventas"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 font-semibold flex items-center justify-center gap-2"
+                  className="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 font-semibold transition-colors"
                 >
-                  <UserPlus className="w-5 h-5" />
-                  Agregar
+                  Agregar Empleado
                 </button>
                 <button
                   type="button"
@@ -750,7 +711,7 @@ export default function ResponsiveForms() {
                     setShowEmployeeModal(false);
                     setNewEmployee({ full_name: '', position: '', department: '' });
                   }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300 font-semibold"
+                  className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
                 >
                   Cancelar
                 </button>
