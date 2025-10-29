@@ -1,6 +1,6 @@
+// src/services/responsivePDFGenerator.js
 import jsPDF from 'jspdf';
-
-// Función para cargar el logo
+// Función para cargar el logo de la empresa
 const cargarLogo = () => {
   return new Promise((resolve) => {
     const img = new Image();

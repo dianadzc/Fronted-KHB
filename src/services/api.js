@@ -16,11 +16,11 @@ async function request(endpoint, options = {}) {
   try {
     const response = await fetch(`${API_URL}${endpoint}`, config);
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(data.message || data.error || 'Error en la petición');
     }
-    
+
     return data;
   } catch (error) {
     console.error('Error en API:', error);
@@ -53,28 +53,33 @@ export const getInventory = async (params = {}) => {
   try {
     const query = new URLSearchParams(params).toString();
     const response = await request(`/inventory${query ? `?${query}` : ''}`);
-    
+
     const assets = response.assets || [];
-    
-    const formattedAssets = assets.map(asset => ({
-      id: asset._id || asset.id,
-      idActivo: asset._id || asset.id,
-      name: asset.name,
-      nombre: asset.name,
-      description: asset.description,
-      descripcion: asset.description,
-      asset_code: asset.asset_code,
-      category_name: asset.category?.name || asset.category_name || 'Otro',
-      tipo: asset.category?.name || asset.category_name || 'Otro',
-      status: asset.status,
-      purchase_price: asset.purchase_price,
-      valorEstimado: asset.purchase_price,
-      brand: asset.brand,
-      marca: asset.brand,
-      model: asset.model,
-      modelo: asset.model
-    }));
-    
+
+    const formattedAssets = assets
+      .filter(asset => asset.status !== 'inactive') // ⭐ Filtrar inactivos
+      .map(asset => ({
+        id: asset._id || asset.id,
+        idActivo: asset._id || asset.id,
+        name: asset.name,
+        nombre: asset.name,
+        description: asset.description,
+        descripcion: asset.description,
+        asset_code: asset.asset_code,
+        category_name: asset.category?.name || asset.category_name || 'Otro',
+        tipo: asset.category?.name || asset.category_name || 'Otro',
+        status: asset.status,
+        purchase_price: asset.purchase_price,
+        valorEstimado: asset.purchase_price,
+        brand: asset.brand,
+        marca: asset.brand,
+        serial_number: asset.serial_number, // ⭐ Nuevo
+        numeroSerie: asset.serial_number,   // ⭐ Nuevo
+        
+      }));
+
+    console.log('📦 Inventario mapeado:', formattedAssets);
+
     return formattedAssets;
   } catch (error) {
     console.error('❌ Error en getInventory:', error);
@@ -85,7 +90,7 @@ export const getInventory = async (params = {}) => {
 export const getInventoryById = async (id) => {
   const response = await request(`/inventory/${id}`);
   const asset = response.asset;
-  
+
   return {
     id: asset._id || asset.id,
     idActivo: asset._id || asset.id,
@@ -127,7 +132,7 @@ export const createInventoryItem = async (item) => {
     location: 'Almacén',
     notes: item.descripcion || ''
   };
-  
+
   return request('/inventory', {
     method: 'POST',
     body: JSON.stringify(backendItem),
@@ -148,7 +153,7 @@ export const updateInventoryItem = async (id, item) => {
     status: statusMap[item.estado] || 'active',
     purchase_price: parseFloat(item.valorEstimado) || 0,
   };
-  
+
   return request(`/inventory/${id}`, {
     method: 'PUT',
     body: JSON.stringify(backendItem),
@@ -216,7 +221,7 @@ export const getIncidentStats = async () => {
 export const getMaintenance = async (params = {}) => {
   const query = new URLSearchParams(params).toString();
   const response = await request(`/maintenance${query ? `?${query}` : ''}`);
-  
+
   const maintenances = response.maintenances || [];
   return maintenances.map(m => ({
     idMantenimiento: m._id,
@@ -258,7 +263,7 @@ export const createMaintenance = async (maintenance) => {
     notes: maintenance.notas || '',
     status: 'scheduled'
   };
-  
+
   return request('/maintenance', {
     method: 'POST',
     body: JSON.stringify(backendMaintenance),
@@ -346,7 +351,7 @@ export const createRequisition = async (requisition) => {
     payable_to: requisition.payable_to,
     concept: requisition.concept
   };
-  
+
   return request('/requisitions', {
     method: 'POST',
     body: JSON.stringify(backendRequisition),
@@ -363,7 +368,7 @@ export const updateRequisition = async (id, data) => {
 export const updateRequisitionStatus = async (id, approved) => {
   return request(`/requisitions/${id}/approve`, {
     method: 'PUT',
-    body: JSON.stringify({ 
+    body: JSON.stringify({
       approved: approved,
       notes: approved ? 'Aprobada desde el sistema' : 'Rechazada desde el sistema'
     }),

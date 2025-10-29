@@ -1,12 +1,13 @@
+// src/pages/Maintenance.jsx
 import { useState, useEffect } from 'react';
-import { Plus, Calendar, Wrench } from 'lucide-react';
+import { Plus, Calendar, Wrench, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AssetSelector from '../components/AssetSelector';
 
 export default function Maintenance() {
   const [maintenances, setMaintenances] = useState([]);
-  const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,12 +25,8 @@ export default function Maintenance() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [maintenanceData, inventoryData] = await Promise.all([
-        api.getMaintenance(),
-        api.getInventory()
-      ]);
+      const maintenanceData = await api.getMaintenance();
       setMaintenances(maintenanceData);
-      setInventory(inventoryData);
     } catch (error) {
       console.error('Error al cargar datos:', error);
       toast.error('Error al cargar mantenimientos');
@@ -169,71 +166,95 @@ export default function Maintenance() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold mb-6">Programar Mantenimiento</h2>
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Activo *</label>
-                  <select
-                    required
-                    value={formData.idActivo}
-                    onChange={(e) => setFormData({ ...formData, idActivo: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Seleccionar activo</option>
-                    {inventory.map(item => (
-                      <option key={item.id} value={item.id}>{item.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
-                  <select
-                    required
-                    value={formData.tipo}
-                    onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Preventivo">Preventivo</option>
-                    <option value="Correctivo">Correctivo</option>
-                    <option value="Predictivo">Predictivo</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Programada *</label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.fechaInicio}
-                    onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
-                  <textarea
-                    value={formData.notas}
-                    onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows="3"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Costo Estimado</label>
-                  <input
-                    type="number"
-                    value={formData.costosEstimados}
-                    onChange={(e) => setFormData({ ...formData, costosEstimados: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-yellow-600 to-yellow-700 px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-white">Programar Mantenimiento</h3>
+              <button 
+                onClick={() => {
+                  setShowModal(false);
+                  resetForm();
+                }} 
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Activo <span className="text-red-500">*</span>
+                </label>
+                <AssetSelector
+                  value={formData.idActivo}
+                  onChange={(assetId) => setFormData({ ...formData, idActivo: assetId })}
+                  required={true}
+                />
               </div>
-              <div className="flex gap-3 mt-6">
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Tipo <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.tipo}
+                  onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all bg-white"
+                >
+                  <option value="Preventivo">Preventivo</option>
+                  <option value="Correctivo">Correctivo</option>
+                  <option value="Predictivo">Predictivo</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Fecha Programada <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={formData.fechaInicio}
+                  onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Notas
+                </label>
+                <textarea
+                  value={formData.notas}
+                  onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all resize-none"
+                  rows="3"
+                  placeholder="Notas adicionales del mantenimiento"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Costo Estimado
+                </label>
+                <input
+                  type="number"
+                  value={formData.costosEstimados}
+                  onChange={(e) => setFormData({ ...formData, costosEstimados: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all"
+                  placeholder="0.00"
+                  step="0.01"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 bg-yellow-600 text-white py-2 rounded-lg hover:bg-yellow-700"
+                  className="flex-1 bg-yellow-600 text-white py-2.5 rounded-lg hover:bg-yellow-700 font-semibold transition-colors"
                 >
                   Programar
                 </button>
@@ -243,7 +264,7 @@ export default function Maintenance() {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg hover:bg-gray-300"
+                  className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
                 >
                   Cancelar
                 </button>

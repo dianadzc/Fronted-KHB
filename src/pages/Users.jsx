@@ -1,3 +1,4 @@
+// src/pages/Users.jsx
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Users as UsersIcon, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
