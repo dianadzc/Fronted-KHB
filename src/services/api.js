@@ -75,7 +75,7 @@ export const getInventory = async (params = {}) => {
         marca: asset.brand,
         serial_number: asset.serial_number, // ⭐ Nuevo
         numeroSerie: asset.serial_number,   // ⭐ Nuevo
-        
+
       }));
 
     console.log('📦 Inventario mapeado:', formattedAssets);
@@ -88,76 +88,97 @@ export const getInventory = async (params = {}) => {
 };
 
 export const getInventoryById = async (id) => {
-  const response = await request(`/inventory/${id}`);
-  const asset = response.asset;
-
-  return {
-    id: asset._id || asset.id,
-    idActivo: asset._id || asset.id,
-    name: asset.name,
-    nombre: asset.name,
-    description: asset.description,
-    descripcion: asset.description,
-    asset_code: asset.asset_code,
-    category_name: asset.category?.name || asset.category_name || 'Otro',
-    tipo: asset.category?.name || asset.category_name || 'Otro',
-    status: asset.status,
-    purchase_price: asset.purchase_price,
-    valorEstimado: asset.purchase_price,
-    brand: asset.brand,
-    marca: asset.brand,
-    model: asset.model,
-    modelo: asset.model
-  };
+  try {
+    const response = await request(`/inventory/${id}`);
+    const asset = response.asset;
+    
+    // ⭐ Mapear correctamente
+    return {
+      id: asset._id || asset.id,
+      nombre: asset.name,
+      name: asset.name,
+      tipo: asset.type || 'Otro',
+      marca: asset.brand || '',
+      brand: asset.brand || '',
+      numeroSerie: asset.serial_number || '', // ⭐ IMPORTANTE
+      serial_number: asset.serial_number || '', // ⭐ IMPORTANTE
+      valorEstimado: asset.purchase_price || 0,
+      purchase_price: asset.purchase_price || 0,
+      descripcion: asset.description || '',
+      estado: asset.status === 'active' ? 'Disponible' :
+              asset.status === 'in_use' ? 'En uso' :
+              asset.status === 'maintenance' ? 'En mantenimiento' : 'Disponible',
+      asset_code: asset.asset_code
+    };
+  } catch (error) {
+    console.error('❌ Error en getInventoryById:', error);
+    throw error;
+  }
 };
 
-export const createInventoryItem = async (item) => {
-  const statusMap = {
-    'Disponible': 'active',
-    'En uso': 'in_use',
-    'En mantenimiento': 'maintenance',
-    'Dado de baja': 'inactive'
-  };
+// ⭐ CREAR ACTIVO
+export const createInventoryItem = async (data) => {
+  try {
+    console.log('📤 Creando activo con datos:', data);
 
-  const backendItem = {
-    name: item.nombre,
-    description: item.descripcion,
-    asset_code: `ASSET-${Date.now()}`,
-    serial_number: item.serie || '',
-    status: statusMap[item.estado] || 'active',
-    purchase_date: new Date().toISOString().split('T')[0],
-    purchase_price: parseFloat(item.valorEstimado) || 0,
-    brand: item.marca || '',
-    model: item.modelo || '',
-    location: 'Almacén',
-    notes: item.descripcion || ''
-  };
+    const payload = {
+      name: data.nombre,
+      description: data.descripcion || '',
+      asset_code: `ASSET-${Date.now()}`,
+      status: data.estado === 'Disponible' ? 'active' :
+        data.estado === 'En uso' ? 'in_use' :
+          data.estado === 'En mantenimiento' ? 'maintenance' : 'active',
+      purchase_price: parseFloat(data.valorEstimado) || 0,
+      brand: data.marca || '',
+      serial_number: data.numeroSerie || '', // ⭐ AQUÍ
+      location: 'Almacén',
+      notes: data.descripcion || ''
+    };
 
-  return request('/inventory', {
-    method: 'POST',
-    body: JSON.stringify(backendItem),
-  });
+    console.log('📦 Payload para crear:', payload);
+
+    const response = await request('/inventory', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    return response;
+  } catch (error) {
+    console.error('❌ Error en createInventoryItem:', error);
+    throw error;
+  }
 };
 
-export const updateInventoryItem = async (id, item) => {
-  const statusMap = {
-    'Disponible': 'active',
-    'En uso': 'in_use',
-    'En mantenimiento': 'maintenance',
-    'Dado de baja': 'inactive'
-  };
+// ⭐ ACTUALIZAR ACTIVO
+export const updateInventoryItem = async (id, data) => {
+  try {
+    console.log('📤 Actualizando activo ID:', id);
+    console.log('📤 Datos a enviar:', data);
 
-  const backendItem = {
-    name: item.nombre,
-    description: item.descripcion,
-    status: statusMap[item.estado] || 'active',
-    purchase_price: parseFloat(item.valorEstimado) || 0,
-  };
+    const payload = {
+      name: data.nombre,
+      description: data.descripcion || '',
+      status: data.estado === 'Disponible' ? 'active' :
+        data.estado === 'En uso' ? 'in_use' :
+          data.estado === 'En mantenimiento' ? 'maintenance' : 'active',
+      purchase_price: parseFloat(data.valorEstimado) || 0,
+      brand: data.marca || '',
+      serial_number: data.numeroSerie || '', // ⭐ AQUÍ
+      notes: data.descripcion || ''
+    };
 
-  return request(`/inventory/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(backendItem),
-  });
+    console.log('📦 Payload para actualizar:', payload);
+
+    const response = await request(`/inventory/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+
+    return response;
+  } catch (error) {
+    console.error('❌ Error en updateInventoryItem:', error);
+    throw error;
+  }
 };
 
 export const deleteInventoryItem = async (id) => {

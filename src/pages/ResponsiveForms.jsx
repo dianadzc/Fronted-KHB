@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { generateResponsiveFormPDF, previewResponsiveFormPDF } from '../services/responsivePDFGenerator';
 import api from '../services/api';
 import AssetSelector from '../components/AssetSelector';
-
+// Componente principal de la página de Formatos Responsivos
 export default function ResponsiveForms() {
   const [forms, setForms] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -15,7 +15,7 @@ export default function ResponsiveForms() {
   const [filterStatus, setFilterStatus] = useState('Todas');
   const [editingId, setEditingId] = useState(null);
   const [selectedAssetId, setSelectedAssetId] = useState(null);
-  
+
   const [formData, setFormData] = useState({
     asset_id: '',
     nombre_activo: '',
@@ -26,13 +26,14 @@ export default function ResponsiveForms() {
     delivery_date: new Date().toISOString().split('T')[0],
     employee_name: '',
     employee_position: '',
+    Date: '',
     status: 'active'
   });
-  
-  const [newEmployee, setNewEmployee] = useState({ 
-    full_name: '', 
-    position: '', 
-    department: '' 
+
+  const [newEmployee, setNewEmployee] = useState({
+    full_name: '',
+    position: '',
+    department: ''
   });
 
   useEffect(() => {
@@ -67,12 +68,14 @@ export default function ResponsiveForms() {
   const loadAssetDetails = async (assetId) => {
     try {
       const asset = await api.getInventoryById(assetId);
+      console.log('🔍 Asset cargado:', asset); // Para debug
+
       setFormData(prev => ({
         ...prev,
         asset_id: assetId,
-        equipment_type: asset.tipo || asset.nombre,
-        brand: asset.marca || '',
-        serial_number: asset.asset_code || '',
+        equipment_type: asset.nombre || asset.name,        // ⭐ NOMBRE del activo (ej: "Laptop", "prueba")
+        brand: asset.marca || asset.brand || '',
+        serial_number: asset.numeroSerie || asset.serial_number || '', // ⭐ Número de serie REAL
         acquisition_cost: asset.valorEstimado || asset.purchase_price || ''
       }));
     } catch (error) {
@@ -106,7 +109,7 @@ export default function ResponsiveForms() {
       const result = await api.createEmployee(newEmployee);
       setEmployees([...employees, result.employee]);
       setFormData({
-        ...formData, 
+        ...formData,
         employee_name: result.employee.full_name,
         employee_position: result.employee.position
       });
@@ -142,12 +145,12 @@ export default function ResponsiveForms() {
 
   const handleEdit = (form) => {
     setEditingId(form._id || form.id);
-    
+
     let fechaFormato = new Date().toISOString().split('T')[0];
     if (form.delivery_date) {
       fechaFormato = new Date(form.delivery_date).toISOString().split('T')[0];
     }
-    
+
     setFormData({
       asset_id: form.asset_id || '',
       equipment_type: form.equipment_type,
@@ -159,11 +162,11 @@ export default function ResponsiveForms() {
       employee_position: form.employee_position,
       status: form.status
     });
-    
+
     if (form.asset_id) {
       setSelectedAssetId(form.asset_id);
     }
-    
+
     setShowModal(true);
   };
 
@@ -330,11 +333,10 @@ export default function ResponsiveForms() {
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                filterStatus === status
+              className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${filterStatus === status
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                }`}
             >
               {status === 'Todas' ? 'Todas' : statusLabels[status.toLowerCase()]}
             </button>
@@ -348,7 +350,7 @@ export default function ResponsiveForms() {
           <div>
             <p className="text-blue-100 text-sm mb-1">Valor Total</p>
             <p className="text-4xl font-bold">
-              ${filteredForms.reduce((sum, form) => 
+              ${filteredForms.reduce((sum, form) =>
                 sum + parseFloat(form.acquisition_cost || 0), 0
               ).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
             </p>
@@ -514,26 +516,48 @@ export default function ResponsiveForms() {
                 </p>
               </div>
 
-              {/* Info auto-llenada (solo lectura) */}
+              {/* Info auto-llenada - CORREGIDO */}
               {formData.equipment_type && (
-                <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
-                  <div> 
-                    <label className="block text-xs font-medium text-gray-600">Nombre</label>
-                    <p className="text-sm font-semibold text-gray-900">{formData.nombre_activo}</p>
+                <div className="p-4 bg-blue-50 rounded-lg border-2 border-blue-200 space-y-3">
+                  {/* Nombre del Equipo */}
+                  <div className="pb-3 border-b border-blue-200">
+                    <label className="block text-xs font-medium text-blue-600 mb-1">
+                      📦 Nombre del Equipo
+                    </label>
+                    <p className="text-lg font-bold text-blue-900">
+                      {formData.equipment_type || 'N/A'}
+                    </p>
                   </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600">Marca</label>
-                    <p className="text-sm font-semibold text-gray-900">{formData.brand || 'N/A'}</p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Marca */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        🏷️ Marca
+                      </label>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {formData.brand || 'N/A'}
+                      </p>
+                    </div>
+
+                    {/* Número de Serie */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        🔢 No. de Serie
+                      </label>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {formData.serial_number || 'Sin serie'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600">Serie/Código</label>
-                    <p className="text-sm font-semibold text-gray-900">{formData.serial_number || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600">Costo</label>
-                    <p className="text-sm font-semibold text-gray-900">
-                      ${parseFloat(formData.acquisition_cost || 0).toLocaleString('es-MX')}
+
+                  {/* Costo */}
+                  <div className="pt-3 border-t border-blue-200">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      💰 Costo de Adquisición
+                    </label>
+                    <p className="text-2xl font-bold text-green-700">
+                      ${parseFloat(formData.acquisition_cost || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
                 </div>
@@ -548,7 +572,7 @@ export default function ResponsiveForms() {
                   type="date"
                   required
                   value={formData.delivery_date}
-                  onChange={(e) => setFormData({...formData, delivery_date: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, delivery_date: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
               </div>
@@ -603,7 +627,7 @@ export default function ResponsiveForms() {
                   </label>
                   <select
                     value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                   >
                     <option value="active">Activa</option>
@@ -668,7 +692,7 @@ export default function ResponsiveForms() {
                   type="text"
                   required
                   value={newEmployee.full_name}
-                  onChange={(e) => setNewEmployee({...newEmployee, full_name: e.target.value})}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, full_name: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                   placeholder="Ej: ELIZABETH RODRÍGUEZ MEDINA"
                 />
@@ -681,7 +705,7 @@ export default function ResponsiveForms() {
                   type="text"
                   required
                   value={newEmployee.position}
-                  onChange={(e) => setNewEmployee({...newEmployee, position: e.target.value})}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                   placeholder="Ej: GERENTE DE VENTAS"
                 />
@@ -693,7 +717,7 @@ export default function ResponsiveForms() {
                 <input
                   type="text"
                   value={newEmployee.department}
-                  onChange={(e) => setNewEmployee({...newEmployee, department: e.target.value})}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, department: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                   placeholder="Ej: Ventas"
                 />

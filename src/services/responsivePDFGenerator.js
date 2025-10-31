@@ -34,7 +34,7 @@ const generarContenidoPDF = async (doc, form) => {
   // Fecha y ubicación (derecha)
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  const fecha = new Date(form.delivery_date || form.createdAt).toLocaleDateString('es-MX', {
+  const fecha = new Date(form. Date || form.createdAt).toLocaleDateString('es-MX', {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
