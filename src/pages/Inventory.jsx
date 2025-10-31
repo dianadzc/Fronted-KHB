@@ -175,9 +175,9 @@ export default function Inventory() {
                   <td className="px-6 py-4 text-sm text-gray-900">{item.numeroSerie || '-'}</td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 text-xs rounded-full ${item.estado === 'Disponible' ? 'bg-green-100 text-green-800' :
-                      item.estado === 'En uso' ? 'bg-blue-100 text-blue-800' :
-                        item.estado === 'En mantenimiento' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
+                        item.estado === 'En uso' ? 'bg-blue-100 text-blue-800' :
+                          item.estado === 'En mantenimiento' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
                       }`}>
                       {item.estado}
                     </span>
@@ -235,54 +235,52 @@ export default function Inventory() {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nombre *</label>
+                <label className="block text-sm font-medium mb-1">Nombre *</label>
                 <input
                   type="text"
                   name="nombre"
                   value={formData.nombre}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border rounded px-3 py-2"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+                <label className="block text-sm font-medium mb-1">Descripción</label>
                 <textarea
                   name="descripcion"
                   value={formData.descripcion}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border rounded px-3 py-2"
                   rows="3"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+                <label className="block text-sm font-medium mb-1">Tipo</label>
                 <select
-                  name="Tipo"
+                  name="tipo"
                   value={formData.tipo}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
+                  className="w-full border rounded px-3 py-2"
                 >
+                  <option value="">Seleccionar tipo...</option>
                   <option value="Equipo de Cómputo">Equipo de Cómputo</option>
                   <option value="Periférico">Periférico</option>
-                  <option value="Red">Accesorio</option>
-                  <option value="Servidor">Dado de baja</option>
-                  <option value="Equipo de Oficina">Equipo de Oficina</option>
                   <option value="Red">Red</option>
+                  <option value="Servidor">Servidor</option>
                   <option value="Otro">Otro</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Estado *</label>
+                <label className="block text-sm font-medium mb-1">Estado *</label>
                 <select
                   name="estado"
                   value={formData.estado}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border rounded px-3 py-2"
                   required
                 >
                   <option value="Disponible">Disponible</option>
@@ -293,37 +291,39 @@ export default function Inventory() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Valor Estimado</label>
+                <label className="block text-sm font-medium mb-1">Valor Estimado</label>
                 <input
                   type="number"
                   name="valorEstimado"
                   value={formData.valorEstimado}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border rounded px-3 py-2"
                   step="0.01"
                 />
               </div>
 
+              {/* ⭐ AGREGAR ESTOS DOS CAMPOS */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Marca</label>
+                <label className="block text-sm font-medium mb-1">Marca</label>
                 <input
                   type="text"
                   name="marca"
                   value={formData.marca}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border rounded px-3 py-2"
+                  placeholder="Ej: HP, Dell, Lenovo"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Número de Serie</label>
+                <label className="block text-sm font-medium mb-1">Número de Serie</label>
                 <input
                   type="text"
                   name="numeroSerie"
                   value={formData.numeroSerie}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Número de serie del activo"
+                  className="w-full border rounded px-3 py-2"
+                  placeholder="Ej: SN-2024-001"
                 />
               </div>
 
@@ -331,9 +331,9 @@ export default function Inventory() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 transition-colors"
+                  className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {loading ? 'Guardando...' : (editingItem ? 'Actualizar Activo' : 'Crear Activo')}
+                  {loading ? 'Guardando...' : (editingItem ? 'Actualizar' : 'Crear')}
                 </button>
                 <button
                   type="button"
@@ -341,7 +341,7 @@ export default function Inventory() {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+                  className="flex-1 border border-gray-300 py-2 rounded hover:bg-gray-50"
                 >
                   Cancelar
                 </button>
