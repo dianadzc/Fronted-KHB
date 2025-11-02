@@ -4,6 +4,8 @@ import { Package, Plus, Edit, Trash2, Search, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AssetNameSelector from '../components/AssetNameSelector';
+import TypeSelector from '../components/TypeSelector';
 
 export default function Inventory() {
   const [inventory, setInventory] = useState([]);
@@ -14,11 +16,11 @@ export default function Inventory() {
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
-    tipo: '',
+    tipo: '',  // ⭐ IMPORTANTE
     estado: 'Disponible',
     valorEstimado: '',
     marca: '',
-    modnumeroSerie: ''
+    numeroSerie: ''  // ⭐ CORREGIR (estaba como modnumeroSerie)
   });
 
   useEffect(() => {
@@ -64,11 +66,11 @@ export default function Inventory() {
     setFormData({
       nombre: item.nombre,
       descripcion: item.descripcion,
-      tipo: item.tipo,
+      tipo: item.tipo || '',  // ⭐ IMPORTANTE
       estado: item.estado || 'Disponible',
       valorEstimado: item.valorEstimado,
       marca: item.marca || '',
-      modelo: item.modelo || ''
+      numeroSerie: item.numeroSerie || ''  // ⭐ IMPORTANTE
     });
     setShowModal(true);
   };
@@ -90,11 +92,11 @@ export default function Inventory() {
     setFormData({
       nombre: '',
       descripcion: '',
-      tipo: '',
+      tipo: '',  // ⭐ IMPORTANTE
       estado: 'Disponible',
       valorEstimado: '',
       marca: '',
-      modelo: ''
+      numeroSerie: ''  // ⭐ IMPORTANTE
     });
     setEditingItem(null);
   };
@@ -175,9 +177,9 @@ export default function Inventory() {
                   <td className="px-6 py-4 text-sm text-gray-900">{item.numeroSerie || '-'}</td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 text-xs rounded-full ${item.estado === 'Disponible' ? 'bg-green-100 text-green-800' :
-                        item.estado === 'En uso' ? 'bg-blue-100 text-blue-800' :
-                          item.estado === 'En mantenimiento' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
+                      item.estado === 'En uso' ? 'bg-blue-100 text-blue-800' :
+                        item.estado === 'En mantenimiento' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
                       }`}>
                       {item.estado}
                     </span>
@@ -214,7 +216,6 @@ export default function Inventory() {
       </div>
 
       {/* Modal */}
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl">
@@ -235,14 +236,11 @@ export default function Inventory() {
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Nombre *</label>
-                <input
-                  type="text"
-                  name="nombre"
+                <label className="block text-sm font-medium mb-1">Nombre del Activo *</label>
+                <AssetNameSelector
                   value={formData.nombre}
-                  onChange={handleInputChange}
-                  className="w-full border rounded px-3 py-2"
-                  required
+                  onChange={(name) => setFormData({ ...formData, nombre: name })}
+                  required={true}
                 />
               </div>
 
@@ -259,20 +257,13 @@ export default function Inventory() {
 
               <div>
                 <label className="block text-sm font-medium mb-1">Tipo</label>
-                <select
-                  name="tipo"
+                <TypeSelector
                   value={formData.tipo}
-                  onChange={handleInputChange}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="">Seleccionar tipo...</option>
-                  <option value="Equipo de Cómputo">Equipo de Cómputo</option>
-                  <option value="Periférico">Periférico</option>
-                  <option value="Red">Red</option>
-                  <option value="Servidor">Servidor</option>
-                  <option value="Otro">Otro</option>
-                </select>
+                  onChange={(tipo) => setFormData({ ...formData, tipo })}
+                  required={false}
+                />
               </div>
+
 
               <div>
                 <label className="block text-sm font-medium mb-1">Estado *</label>

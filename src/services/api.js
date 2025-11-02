@@ -49,49 +49,31 @@ export const getProfile = async () => {
 };
 
 // ========== INVENTARIO ==========
-export const getInventory = async (params = {}) => {
-  try {
-    const query = new URLSearchParams(params).toString();
-    const response = await request(`/inventory${query ? `?${query}` : ''}`);
+export const getInventory = async () => {
+  const response = await request('/inventory?limit=1000');
 
-    const assets = response.assets || [];
+  // ⭐ MAPEAR RESPUESTA DEL BACKEND AL FORMATO DEL FRONTEND
+  const mappedAssets = response.assets.map(asset => ({
+    id: asset._id,
+    nombre: asset.name,
+    descripcion: asset.description,
+    tipo: asset.type || 'Otro',  // ⭐ type → tipo
+    marca: asset.brand,
+    numeroSerie: asset.serial_number,
+    valorEstimado: asset.purchase_price,
+    estado: asset.status === 'active' ? 'Disponible' :
+      asset.status === 'in_use' ? 'En uso' :
+        asset.status === 'maintenance' ? 'En mantenimiento' : 'Dado de baja',
+    status: asset.status
+  }));
 
-    const formattedAssets = assets
-      .filter(asset => asset.status !== 'inactive') // ⭐ Filtrar inactivos
-      .map(asset => ({
-        id: asset._id || asset.id,
-        idActivo: asset._id || asset.id,
-        name: asset.name,
-        nombre: asset.name,
-        description: asset.description,
-        descripcion: asset.description,
-        asset_code: asset.asset_code,
-        category_name: asset.category?.name || asset.category_name || 'Otro',
-        tipo: asset.category?.name || asset.category_name || 'Otro',
-        status: asset.status,
-        purchase_price: asset.purchase_price,
-        valorEstimado: asset.purchase_price,
-        brand: asset.brand,
-        marca: asset.brand,
-        serial_number: asset.serial_number, // ⭐ Nuevo
-        numeroSerie: asset.serial_number,   // ⭐ Nuevo
-
-      }));
-
-    console.log('📦 Inventario mapeado:', formattedAssets);
-
-    return formattedAssets;
-  } catch (error) {
-    console.error('❌ Error en getInventory:', error);
-    return [];
-  }
+  return mappedAssets;
 };
-
 export const getInventoryById = async (id) => {
   try {
     const response = await request(`/inventory/${id}`);
     const asset = response.asset;
-    
+
     // ⭐ Mapear correctamente
     return {
       id: asset._id || asset.id,
@@ -106,8 +88,8 @@ export const getInventoryById = async (id) => {
       purchase_price: asset.purchase_price || 0,
       descripcion: asset.description || '',
       estado: asset.status === 'active' ? 'Disponible' :
-              asset.status === 'in_use' ? 'En uso' :
-              asset.status === 'maintenance' ? 'En mantenimiento' : 'Disponible',
+        asset.status === 'in_use' ? 'En uso' :
+          asset.status === 'maintenance' ? 'En mantenimiento' : 'Disponible',
       asset_code: asset.asset_code
     };
   } catch (error) {
@@ -118,72 +100,78 @@ export const getInventoryById = async (id) => {
 
 // ⭐ CREAR ACTIVO
 export const createInventoryItem = async (data) => {
-  try {
-    console.log('📤 Creando activo con datos:', data);
+  // ⭐ MAPEAR CAMPOS CORRECTAMENTE
+  const mappedData = {
+    name: data.nombre,
+    description: data.descripcion || '',
+    type: data.tipo || 'Otro',  // ⭐ tipo → type
+    asset_code: `ASSET-${Date.now()}`,
+    brand: data.marca || '',
+    serial_number: data.numeroSerie || '',
+    purchase_price: parseFloat(data.valorEstimado) || 0,
+    status: data.estado === 'Disponible' ? 'active' :
+      data.estado === 'En uso' ? 'in_use' :
+        data.estado === 'En mantenimiento' ? 'maintenance' : 'inactive',
+    location: 'Almacén',
+    notes: data.descripcion || ''
+  };
 
-    const payload = {
-      name: data.nombre,
-      description: data.descripcion || '',
-      asset_code: `ASSET-${Date.now()}`,
-      status: data.estado === 'Disponible' ? 'active' :
-        data.estado === 'En uso' ? 'in_use' :
-          data.estado === 'En mantenimiento' ? 'maintenance' : 'active',
-      purchase_price: parseFloat(data.valorEstimado) || 0,
-      brand: data.marca || '',
-      serial_number: data.numeroSerie || '', // ⭐ AQUÍ
-      location: 'Almacén',
-      notes: data.descripcion || ''
-    };
-
-    console.log('📦 Payload para crear:', payload);
-
-    const response = await request('/inventory', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-
-    return response;
-  } catch (error) {
-    console.error('❌ Error en createInventoryItem:', error);
-    throw error;
-  }
+  console.log('📤 Enviando al backend:', mappedData);
+  return request('/inventory', {
+    method: 'POST',
+    body: JSON.stringify(mappedData),
+  });
 };
 
-// ⭐ ACTUALIZAR ACTIVO
 export const updateInventoryItem = async (id, data) => {
-  try {
-    console.log('📤 Actualizando activo ID:', id);
-    console.log('📤 Datos a enviar:', data);
+  // ⭐ MAPEAR CAMPOS CORRECTAMENTE
+  const mappedData = {
+    name: data.nombre,
+    description: data.descripcion || '',
+    type: data.tipo || 'Otro',  // ⭐ tipo → type
+    brand: data.marca || '',
+    serial_number: data.numeroSerie || '',
+    purchase_price: parseFloat(data.valorEstimado) || 0,
+    status: data.estado === 'Disponible' ? 'active' :
+      data.estado === 'En uso' ? 'in_use' :
+        data.estado === 'En mantenimiento' ? 'maintenance' : 'inactive',
+    notes: data.descripcion || ''
+  };
 
-    const payload = {
-      name: data.nombre,
-      description: data.descripcion || '',
-      status: data.estado === 'Disponible' ? 'active' :
-        data.estado === 'En uso' ? 'in_use' :
-          data.estado === 'En mantenimiento' ? 'maintenance' : 'active',
-      purchase_price: parseFloat(data.valorEstimado) || 0,
-      brand: data.marca || '',
-      serial_number: data.numeroSerie || '', // ⭐ AQUÍ
-      notes: data.descripcion || ''
-    };
-
-    console.log('📦 Payload para actualizar:', payload);
-
-    const response = await request(`/inventory/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(payload)
-    });
-
-    return response;
-  } catch (error) {
-    console.error('❌ Error en updateInventoryItem:', error);
-    throw error;
-  }
+  console.log('📤 Actualizando backend:', mappedData);
+  return request(`/inventory/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(mappedData),
+  });
 };
 
 export const deleteInventoryItem = async (id) => {
   return request(`/inventory/${id}`, {
     method: 'DELETE',
+  });
+};
+
+// ========== CATÁLOGO DE ACTIVOS ==========
+export const getAssetCatalog = async () => {
+  return request('/inventory/catalog/asset-names');
+};
+
+export const createAssetName = async (data) => {
+  return request('/inventory/catalog/asset-names', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+// ========== CATÁLOGO DE TIPOS ==========
+export const getTypeCatalog = async () => {
+  return request('/inventory/catalog/types');
+};
+
+export const createType = async (data) => {
+  return request('/inventory/catalog/types', {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 };
 
@@ -456,6 +444,12 @@ export const updateUser = async (id, userData) => {
   });
 };
 
+export const deleteUser = async (id) => {
+  return request(`/auth/users/${id}`, {
+    method: 'DELETE',
+  });
+};
+
 // Export default con todas las funciones
 const api = {
   // Auth
@@ -468,6 +462,12 @@ const api = {
   createInventoryItem,
   updateInventoryItem,
   deleteInventoryItem,
+  //catalogo agregar activo
+  getAssetCatalog,
+  createAssetName,
+  //catalogo agregar Tipo
+  getTypeCatalog,
+  createType,
   // Incidents
   getIncidents,
   getIncidentById,
@@ -494,6 +494,7 @@ const api = {
   // Clients
   getClients,
   createClient,
+  deleteUser,
   // Requisitions
   getRequisitions,
   createRequisition,

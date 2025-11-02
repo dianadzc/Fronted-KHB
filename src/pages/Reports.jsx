@@ -1,4 +1,4 @@
-// src/pages/Reports.jsx
+// src/pages/Reports.jsx - CORREGIDO
 import { useState, useEffect } from 'react';
 import {
   BarChart3, FileText, Download, Calendar, Package,
@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -25,19 +25,20 @@ export default function Reports() {
 
   const loadStats = async () => {
     try {
-      const [inventory, incidents] = await Promise.all([
+      const [inventory, incidents, maintenance] = await Promise.all([
         api.getInventory(),
-        api.getIncidents()
+        api.getIncidents(),
+        api.getMaintenance()
       ]);
 
-      const totalValue = inventory.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
+      const totalValue = inventory.reduce((sum, item) => sum + (item.valorEstimado || item.purchase_price || 0), 0);
       const openIncidents = incidents.filter(i => i.status === 'open' || i.status === 'assigned').length;
 
       setStats({
         totalAssets: inventory.length,
         totalValue,
         openIncidents,
-        maintenanceScheduled: 0 // Agregar lógica de mantenimientos
+        maintenanceScheduled: maintenance.filter(m => m.status === 'scheduled').length
       });
     } catch (error) {
       console.error('Error al cargar estadísticas:', error);
@@ -51,15 +52,16 @@ export default function Reports() {
       toast.loading('Generando reporte de inventario...');
 
       const inventory = await api.getInventory();
+      console.log('📦 Inventario:', inventory);
 
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
       // Encabezado
       doc.setFontSize(18);
-      doc.setTextColor(30, 58, 138); // Blue
+      doc.setTextColor(30, 58, 138);
       doc.text('Hotel Kin Ha Beachscape', 14, 20);
-      
+
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
       doc.text('Reporte de Inventario Completo', 14, 30);
@@ -69,37 +71,42 @@ export default function Reports() {
       doc.text(`Fecha: ${new Date().toLocaleDateString('es-MX')}`, 14, 38);
       doc.text(`Total de Activos: ${inventory.length}`, 14, 44);
 
-      // Tabla de inventario
+      // Calcular valor total
+      const valorTotal = inventory.reduce((sum, item) => sum + (item.valorEstimado || item.purchase_price || 0), 0);
+      doc.text(`Valor Total: $${valorTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 14, 50);
+
+      // Tabla de inventario - CAMPOS CORREGIDOS
       const tableData = inventory.map(item => [
         item.asset_code || 'N/A',
-        item.name || '',
-        item.category_name || 'Otro',
-        item.status === 'active' ? 'Activo' : 
-        item.status === 'in_use' ? 'En Uso' :
-        item.status === 'maintenance' ? 'Mantenimiento' : 'Inactivo',
-        `$${(item.purchase_price || 0).toFixed(2)}`,
-        item.brand || 'N/A',
-        item.model || 'N/A'
+        item.nombre || item.name || 'Sin nombre',
+        item.tipo || item.category_name || 'Otro',
+        item.estado || (item.status === 'active' ? 'Activo' :
+          item.status === 'in_use' ? 'En Uso' :
+            item.status === 'maintenance' ? 'Mantenimiento' : 'Inactivo'),
+        `$${(item.valorEstimado || item.purchase_price || 0).toFixed(2)}`,
+        item.marca || item.brand || 'N/A'
       ]);
 
-      doc.autoTable({
-        startY: 50,
-        head: [['Código', 'Nombre', 'Categoría', 'Estado', 'Valor', 'Marca', 'Modelo']],
+      autoTable(doc, {
+        startY: 58,
+        head: [['Código', 'Nombre', 'Categoría', 'Estado', 'Valor', 'Marca']],
         body: tableData,
+        // ... resto de opciones igual
+
         theme: 'grid',
-        headStyles: { 
+        headStyles: {
           fillColor: [30, 58, 138],
           textColor: 255,
           fontSize: 9,
           fontStyle: 'bold'
         },
-        bodyStyles: { 
-          fontSize: 8 
+        bodyStyles: {
+          fontSize: 8
         },
-        alternateRowStyles: { 
-          fillColor: [245, 247, 250] 
+        alternateRowStyles: {
+          fillColor: [245, 247, 250]
         },
-        margin: { top: 50, left: 14, right: 14 }
+        margin: { top: 58, left: 14, right: 14 }
       });
 
       // Pie de página
@@ -109,7 +116,7 @@ export default function Reports() {
         doc.setFontSize(8);
         doc.setTextColor(150);
         doc.text(
-          `Página ${i} de ${pageCount}`,
+          `Página ${i} de ${pageCount} - Hotel Kin Ha Beachscape`,
           pageWidth / 2,
           doc.internal.pageSize.getHeight() - 10,
           { align: 'center' }
@@ -120,9 +127,9 @@ export default function Reports() {
       toast.dismiss();
       toast.success('Reporte generado exitosamente');
     } catch (error) {
-      console.error('Error al generar reporte:', error);
+      console.error('❌ Error al generar reporte:', error);
       toast.dismiss();
-      toast.error('Error al generar reporte');
+      toast.error('Error al generar reporte: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -135,15 +142,16 @@ export default function Reports() {
       toast.loading('Generando reporte de incidencias...');
 
       const incidents = await api.getIncidents();
+      console.log('🔴 Incidencias:', incidents);
 
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
       // Encabezado
       doc.setFontSize(18);
-      doc.setTextColor(220, 38, 38); // Red
+      doc.setTextColor(220, 38, 38);
       doc.text('Hotel Kin Ha Beachscape', 14, 20);
-      
+
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
       doc.text('Reporte de Incidencias', 14, 30);
@@ -156,7 +164,7 @@ export default function Reports() {
       // Estadísticas
       const openCount = incidents.filter(i => i.status === 'open').length;
       const resolvedCount = incidents.filter(i => i.status === 'resolved').length;
-      
+
       doc.text(`Abiertas: ${openCount} | Resueltas: ${resolvedCount}`, 14, 50);
 
       // Tabla de incidencias
@@ -165,31 +173,31 @@ export default function Reports() {
         item.title || '',
         item.asset_id?.name || 'N/A',
         item.priority === 'critical' ? 'Crítica' :
-        item.priority === 'high' ? 'Alta' :
-        item.priority === 'medium' ? 'Media' : 'Baja',
+          item.priority === 'high' ? 'Alta' :
+            item.priority === 'medium' ? 'Media' : 'Baja',
         item.status === 'open' ? 'Abierta' :
-        item.status === 'assigned' ? 'Asignada' :
-        item.status === 'in_progress' ? 'En Progreso' :
-        item.status === 'resolved' ? 'Resuelta' : 'Cerrada',
-        new Date(item.reported_date).toLocaleDateString('es-MX')
+          item.status === 'assigned' ? 'Asignada' :
+            item.status === 'in_progress' ? 'En Progreso' :
+              item.status === 'resolved' ? 'Resuelta' : 'Cerrada',
+        new Date(item.reported_date || item.createdAt).toLocaleDateString('es-MX')
       ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: 58,
         head: [['Código', 'Título', 'Activo', 'Prioridad', 'Estado', 'Fecha']],
         body: tableData,
         theme: 'grid',
-        headStyles: { 
+        headStyles: {
           fillColor: [220, 38, 38],
           textColor: 255,
           fontSize: 9,
           fontStyle: 'bold'
         },
-        bodyStyles: { 
-          fontSize: 8 
+        bodyStyles: {
+          fontSize: 8
         },
-        alternateRowStyles: { 
-          fillColor: [254, 242, 242] 
+        alternateRowStyles: {
+          fillColor: [254, 242, 242]
         },
         margin: { top: 58, left: 14, right: 14 }
       });
@@ -201,7 +209,7 @@ export default function Reports() {
         doc.setFontSize(8);
         doc.setTextColor(150);
         doc.text(
-          `Página ${i} de ${pageCount}`,
+          `Página ${i} de ${pageCount} - Hotel Kin Ha Beachscape`,
           pageWidth / 2,
           doc.internal.pageSize.getHeight() - 10,
           { align: 'center' }
@@ -212,9 +220,9 @@ export default function Reports() {
       toast.dismiss();
       toast.success('Reporte generado exitosamente');
     } catch (error) {
-      console.error('Error al generar reporte:', error);
+      console.error('❌ Error al generar reporte:', error);
       toast.dismiss();
-      toast.error('Error al generar reporte');
+      toast.error('Error al generar reporte: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -227,15 +235,16 @@ export default function Reports() {
       toast.loading('Generando reporte de mantenimientos...');
 
       const maintenance = await api.getMaintenance();
+      console.log('🔧 Mantenimientos:', maintenance);
 
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
       // Encabezado
       doc.setFontSize(18);
-      doc.setTextColor(234, 179, 8); // Yellow/Orange
+      doc.setTextColor(234, 179, 8);
       doc.text('Hotel Kin Ha Beachscape', 14, 20);
-      
+
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
       doc.text('Reporte de Mantenimientos', 14, 30);
@@ -250,29 +259,28 @@ export default function Reports() {
         item.nombreActivo || 'N/A',
         item.tipo || '',
         item.status === 'scheduled' ? 'Programado' :
-        item.status === 'in_progress' ? 'En Progreso' :
-        item.status === 'completed' ? 'Completado' : 'Cancelado',
+          item.status === 'in_progress' ? 'En Progreso' :
+            item.status === 'completed' ? 'Completado' : 'Cancelado',
         new Date(item.fechaInicio).toLocaleDateString('es-MX'),
-        `$${(item.costosEstimados || 0).toFixed(2)}`,
-        item.notas || ''
+        `$${(item.costosEstimados || 0).toFixed(2)}`
       ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: 52,
-        head: [['Activo', 'Tipo', 'Estado', 'Fecha', 'Costo', 'Notas']],
+        head: [['Activo', 'Tipo', 'Estado', 'Fecha', 'Costo']],
         body: tableData,
         theme: 'grid',
-        headStyles: { 
+        headStyles: {
           fillColor: [234, 179, 8],
           textColor: 0,
           fontSize: 9,
           fontStyle: 'bold'
         },
-        bodyStyles: { 
-          fontSize: 8 
+        bodyStyles: {
+          fontSize: 8
         },
-        alternateRowStyles: { 
-          fillColor: [254, 252, 232] 
+        alternateRowStyles: {
+          fillColor: [254, 252, 232]
         },
         margin: { top: 52, left: 14, right: 14 }
       });
@@ -284,7 +292,7 @@ export default function Reports() {
         doc.setFontSize(8);
         doc.setTextColor(150);
         doc.text(
-          `Página ${i} de ${pageCount}`,
+          `Página ${i} de ${pageCount} - Hotel Kin Ha Beachscape`,
           pageWidth / 2,
           doc.internal.pageSize.getHeight() - 10,
           { align: 'center' }
@@ -295,9 +303,9 @@ export default function Reports() {
       toast.dismiss();
       toast.success('Reporte generado exitosamente');
     } catch (error) {
-      console.error('Error al generar reporte:', error);
+      console.error('❌ Error al generar reporte:', error);
       toast.dismiss();
-      toast.error('Error al generar reporte');
+      toast.error('Error al generar reporte: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -319,9 +327,9 @@ export default function Reports() {
 
       // Encabezado
       doc.setFontSize(18);
-      doc.setTextColor(16, 185, 129); // Green
+      doc.setTextColor(16, 185, 129);
       doc.text('Hotel Kin Ha Beachscape', 14, 20);
-      
+
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
       doc.text('Reporte Financiero', 14, 30);
@@ -331,7 +339,7 @@ export default function Reports() {
       doc.text(`Fecha: ${new Date().toLocaleDateString('es-MX')}`, 14, 38);
 
       // Resumen financiero
-      const totalAssetValue = inventory.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
+      const totalAssetValue = inventory.reduce((sum, item) => sum + (item.valorEstimado || item.purchase_price || 0), 0);
       const totalMaintenanceCost = maintenance.reduce((sum, item) => sum + (item.costosEstimados || 0), 0);
 
       doc.setFontSize(12);
@@ -339,17 +347,17 @@ export default function Reports() {
       doc.text('Resumen Financiero:', 14, 50);
 
       doc.setFontSize(10);
-      doc.text(`Valor Total de Activos: $${totalAssetValue.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, 14, 58);
-      doc.text(`Costo Total de Mantenimientos: $${totalMaintenanceCost.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, 14, 66);
+      doc.text(`Valor Total de Activos: $${totalAssetValue.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 14, 58);
+      doc.text(`Costo Total de Mantenimientos: $${totalMaintenanceCost.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`, 14, 66);
 
       // Tabla de activos por categoría
       const categorySummary = inventory.reduce((acc, item) => {
-        const category = item.category_name || 'Otro';
+        const category = item.tipo || item.category_name || 'Otro';
         if (!acc[category]) {
           acc[category] = { count: 0, value: 0 };
         }
         acc[category].count++;
-        acc[category].value += item.purchase_price || 0;
+        acc[category].value += item.valorEstimado || item.purchase_price || 0;
         return acc;
       }, {});
 
@@ -359,22 +367,22 @@ export default function Reports() {
         `$${data.value.toFixed(2)}`
       ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: 75,
         head: [['Categoría', 'Cantidad', 'Valor Total']],
         body: categoryData,
         theme: 'grid',
-        headStyles: { 
+        headStyles: {
           fillColor: [16, 185, 129],
           textColor: 255,
           fontSize: 9,
           fontStyle: 'bold'
         },
-        bodyStyles: { 
-          fontSize: 9 
+        bodyStyles: {
+          fontSize: 9
         },
-        alternateRowStyles: { 
-          fillColor: [236, 253, 245] 
+        alternateRowStyles: {
+          fillColor: [236, 253, 245]
         },
         margin: { top: 75, left: 14, right: 14 }
       });
@@ -386,7 +394,7 @@ export default function Reports() {
         doc.setFontSize(8);
         doc.setTextColor(150);
         doc.text(
-          `Página ${i} de ${pageCount}`,
+          `Página ${i} de ${pageCount} - Hotel Kin Ha Beachscape`,
           pageWidth / 2,
           doc.internal.pageSize.getHeight() - 10,
           { align: 'center' }
@@ -397,9 +405,9 @@ export default function Reports() {
       toast.dismiss();
       toast.success('Reporte generado exitosamente');
     } catch (error) {
-      console.error('Error al generar reporte:', error);
+      console.error('❌ Error al generar reporte:', error);
       toast.dismiss();
-      toast.error('Error al generar reporte');
+      toast.error('Error al generar reporte: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -503,7 +511,7 @@ export default function Reports() {
           <div>
             <h3 className="text-sm font-semibold text-blue-900">Formato Profesional</h3>
             <p className="text-sm text-blue-700 mt-1">
-              Todos los reportes se generan en formato PDF con diseño corporativo del hotel. 
+              Todos los reportes se generan en formato PDF con diseño corporativo del hotel.
               Incluyen tablas para imprimir y compartir fácilmente.
             </p>
           </div>
@@ -524,7 +532,7 @@ export default function Reports() {
                   <report.icon size={24} className="text-white" />
                 </div>
               </div>
-              
+
               <h3 className="text-lg font-bold text-gray-900 mb-2">
                 {report.title}
               </h3>
@@ -551,7 +559,7 @@ export default function Reports() {
           <TrendingUp className="text-blue-600" />
           Características de los Reportes
         </h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="flex items-start gap-3">
             <div className="bg-green-100 p-2 rounded-lg">

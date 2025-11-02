@@ -84,24 +84,60 @@ export default function ResponsiveForms() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingId) {
-        await api.updateResponsiveForm(editingId, formData);
-        toast.success('Responsiva actualizada exitosamente');
-      } else {
-        await api.createResponsiveForm(formData);
-        toast.success('Responsiva creada exitosamente');
-      }
-      setShowModal(false);
-      resetForm();
-      loadData();
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error(error.message || 'Error al procesar la responsiva');
+  // En ResponsiveForms.jsx - función handleSubmit
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  // ⭐ VALIDACIÓN ANTES DE ENVIAR
+  if (!formData.equipment_type) {
+    toast.error('Debes seleccionar un activo');
+    return;
+  }
+
+  if (!formData.employee_name) {
+    toast.error('Debes seleccionar un empleado');
+    return;
+  }
+
+  // ⭐ ASEGURAR QUE acquisition_cost SEA NÚMERO
+  const costNumber = parseFloat(formData.acquisition_cost);
+  if (isNaN(costNumber) || costNumber <= 0) {
+    toast.error('El costo debe ser un número válido mayor a 0');
+    return;
+  }
+
+  try {
+    const dataToSend = {
+      asset_id: formData.asset_id || null,
+      equipment_type: formData.equipment_type,
+      brand: formData.brand || 'N/A',
+      serial_number: formData.serial_number || 'Sin serie',
+      acquisition_cost: costNumber, // ⭐ ENVIAR COMO NÚMERO
+      delivery_date: formData.delivery_date,
+      employee_name: formData.employee_name,
+      employee_position: formData.employee_position,
+      status: formData.status || 'active'
+    };
+
+    console.log('📤 Enviando responsiva:', dataToSend);
+
+    if (editingId) {
+      await api.updateResponsiveForm(editingId, dataToSend);
+      toast.success('Responsiva actualizada exitosamente');
+    } else {
+      await api.createResponsiveForm(dataToSend);
+      toast.success('Responsiva creada exitosamente');
     }
-  };
+    
+    setShowModal(false);
+    resetForm();
+    loadData();
+  } catch (error) {
+    console.error('❌ Error:', error);
+    console.error('❌ Respuesta del servidor:', error.response?.data);
+    toast.error(error.message || 'Error al procesar la responsiva');
+  }
+};
 
   const handleCreateEmployee = async (e) => {
     e.preventDefault();

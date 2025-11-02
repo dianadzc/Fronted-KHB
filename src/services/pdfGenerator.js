@@ -2,6 +2,7 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
+
 // Función para convertir número a letras
 const numeroALetras = (num) => {
   const unidades = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
